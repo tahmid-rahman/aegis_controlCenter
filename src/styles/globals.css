@@ -1,0 +1,138 @@
+/* src/styles/globals.css - Simplified Version */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode Colors */
+    --color-background: 255 255 255;
+    --color-surface: 248 250 252;
+    --color-surface-variant: 241 245 249;
+    --color-on-surface: 15 23 42;
+    --color-on-surface-variant: 100 116 139;
+    --color-primary: 103 80 164;
+    --color-on-primary: 255 255 255;
+    --color-secondary: 94 92 230;
+    --color-tertiary: 0 103 131;
+    --color-accent: 236 64 122;
+    --color-error: 179 38 30;
+    --color-panic: 220 38 38;
+  }
+
+  .dark {
+    /* Dark Mode Colors */
+    --color-background: 18 18 18;
+    --color-surface: 28 27 31;
+    --color-surface-variant: 73 69 79;
+    --color-on-surface: 230 225 229;
+    --color-on-surface-variant: 202 196 208;
+    --color-primary: 208 188 255;
+    --color-on-primary: 56 42 101;
+    --color-secondary: 187 186 255;
+    --color-tertiary: 144 219 244;
+    --color-accent: 255 138 128;
+    --color-error: 242 184 181;
+    --color-panic: 255 138 128;
+  }
+
+  body {
+    @apply bg-background text-on-surface transition-colors duration-200;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-on-primary px-4 py-2 rounded-lg hover:opacity-90 transition-opacity;
+  }
+  
+  .btn-panic {
+    @apply bg-panic text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity;
+  }
+  
+  .card {
+    @apply bg-surface rounded-xl shadow-sm border border-surface-variant;
+  }
+  
+  .input-field {
+    @apply bg-surface-variant text-on-surface border border-outline rounded-lg px-3 py-2 transition-colors duration-200;
+  }
+  
+  .input-field:focus {
+    @apply outline-none ring-2 ring-primary ring-offset-2 border-transparent;
+  }
+}
+
+@layer utilities {
+  .bg-background {
+    background-color: rgb(var(--color-background));
+  }
+  
+  .bg-surface {
+    background-color: rgb(var(--color-surface));
+  }
+  
+  .bg-surface-variant {
+    background-color: rgb(var(--color-surface-variant));
+  }
+  
+  .bg-primary {
+    background-color: rgb(var(--color-primary));
+  }
+  
+  .bg-secondary {
+    background-color: rgb(var(--color-secondary));
+  }
+  
+  .bg-tertiary {
+    background-color: rgb(var(--color-tertiary));
+  }
+  
+  .bg-accent {
+    background-color: rgb(var(--color-accent));
+  }
+  
+  .bg-error {
+    background-color: rgb(var(--color-error));
+  }
+  
+  .bg-panic {
+    background-color: rgb(var(--color-panic));
+  }
+  
+  .text-on-surface {
+    color: rgb(var(--color-on-surface));
+  }
+  
+  .text-on-surface-variant {
+    color: rgb(var(--color-on-surface-variant));
+  }
+  
+  .text-on-primary {
+    color: rgb(var(--color-on-primary));
+  }
+  
+  .text-primary {
+    color: rgb(var(--color-primary));
+  }
+  
+  .text-secondary {
+    color: rgb(var(--color-secondary));
+  }
+  
+  .text-accent {
+    color: rgb(var(--color-accent));
+  }
+  
+  .text-error {
+    color: rgb(var(--color-error));
+  }
+  
+  .border-outline {
+    border-color: rgb(var(--color-surface-variant));
+  }
+  
+  .ring-primary {
+    --tw-ring-color: rgb(var(--color-primary));
+  }
+}
