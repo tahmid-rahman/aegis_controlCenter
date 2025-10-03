@@ -31,8 +31,8 @@ const Settings = () => {
   // Form states
   const [settings, setSettings] = useState({
     // General Settings
-    systemName: 'Shield+ Control Center',
-    adminEmail: 'admin@shieldplus.bd',
+    systemName: 'Aegis Control Center',
+    adminEmail: 'admin@aegis.bd',
     contactNumber: '+880 2-XXXX-XXXX',
     language: 'en',
     timezone: 'Asia/Dhaka',
@@ -662,7 +662,7 @@ const Settings = () => {
         <div>
           <h1 className="text-3xl font-bold text-on-surface">System Settings</h1>
           <p className="text-on-surface-variant mt-1">
-            Configure and customize your Shield+ control center
+            Configure and customize your Aegis control center
           </p>
         </div>
         <button 

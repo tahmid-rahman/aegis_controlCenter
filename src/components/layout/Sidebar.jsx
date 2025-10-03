@@ -107,21 +107,22 @@ const Sidebar = () => {
 
       {/* Sidebar */}
       <div className={`
-        fixed lg:relative inset-y-0 left-0 z-50
+        flex flex-col
         bg-surface border-r border-outline
         transition-all duration-300 ease-in-out
-        flex flex-col
+        h-screen max-h-screen sticky top-0
         ${isCollapsed ? 'lg:w-20 w-0' : 'w-64'}
         ${isMobile && isCollapsed ? 'hidden' : ''}
         shadow-xl lg:shadow-none
+        overflow-hidden
       `}>
         
-        {/* Logo Section */}
-        <div className="flex items-center justify-between p-4 border-b border-outline min-h-[4rem]">
+        {/* Logo Section - Fixed Height */}
+        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-outline h-16">
           {!isCollapsed ? (
             <div className="flex items-center space-x-3 animate-fade-in">
               <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-lg">
-                <Shield className="h-6 w-6 text-[#674fa4]" />
+                <Shield className="h-6 w-6 text-on-primary" />
               </div>
               <div className="flex flex-col">
                 <h1 className="text-xl font-bold text-on-surface tracking-tight">Aegis</h1>
@@ -130,7 +131,7 @@ const Sidebar = () => {
             </div>
           ) : (
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-lg mx-auto">
-              <Shield className="h-6 w-6 text-[#674fa4]" />
+              <Shield className="h-6 w-6 text-on-primary" />
             </div>
           )}
 
@@ -143,8 +144,8 @@ const Sidebar = () => {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        {/* Navigation - Scrollable Area */}
+        <nav className="flex-1 overflow-y-auto py-4 space-y-2 px-4">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
@@ -198,9 +199,9 @@ const Sidebar = () => {
           ))}
         </nav>
 
-        {/* System Status */}
-        <div className={`p-4 border-t border-outline transition-all duration-300 ${isCollapsed ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <div className="bg-success/10 border border-success/20 rounded-xl p-4 space-y-3">
+        {/* System Status - Fixed Height */}
+        <div className={`flex-shrink-0 border-t border-outline transition-all duration-300 ${isCollapsed ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+          <div className="bg-success/10 border border-success/20 rounded-xl p-4 space-y-3 m-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
@@ -229,9 +230,9 @@ const Sidebar = () => {
           </div>
         </div>
 
-        {/* Collapsed Status Indicator */}
+        {/* Collapsed Status Indicator - Fixed Height */}
         {isCollapsed && (
-          <div className="p-3 border-t border-outline">
+          <div className="flex-shrink-0 p-3 border-t border-outline">
             <div className="flex flex-col items-center space-y-2">
               <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
               <Radio className="h-4 w-4 text-success" />
