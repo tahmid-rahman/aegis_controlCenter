@@ -10,7 +10,7 @@ const Layout = ({ children }) => {
       <Sidebar />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-64">
+      <div className=" flex flex-1 flex-col ">
         {/* Header */}
         <Header />
         

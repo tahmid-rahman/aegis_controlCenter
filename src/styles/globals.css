@@ -1,4 +1,3 @@
-/* src/styles/globals.css - Simplified Version */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -64,75 +63,30 @@
 }
 
 @layer utilities {
-  .bg-background {
-    background-color: rgb(var(--color-background));
-  }
-  
-  .bg-surface {
-    background-color: rgb(var(--color-surface));
-  }
-  
-  .bg-surface-variant {
-    background-color: rgb(var(--color-surface-variant));
-  }
-  
-  .bg-primary {
-    background-color: rgb(var(--color-primary));
-  }
-  
-  .bg-secondary {
-    background-color: rgb(var(--color-secondary));
-  }
-  
-  .bg-tertiary {
-    background-color: rgb(var(--color-tertiary));
-  }
-  
-  .bg-accent {
-    background-color: rgb(var(--color-accent));
-  }
-  
-  .bg-error {
-    background-color: rgb(var(--color-error));
-  }
-  
-  .bg-panic {
-    background-color: rgb(var(--color-panic));
-  }
-  
-  .text-on-surface {
-    color: rgb(var(--color-on-surface));
-  }
-  
-  .text-on-surface-variant {
-    color: rgb(var(--color-on-surface-variant));
-  }
-  
-  .text-on-primary {
-    color: rgb(var(--color-on-primary));
-  }
-  
-  .text-primary {
-    color: rgb(var(--color-primary));
-  }
-  
-  .text-secondary {
-    color: rgb(var(--color-secondary));
-  }
-  
-  .text-accent {
-    color: rgb(var(--color-accent));
-  }
-  
-  .text-error {
-    color: rgb(var(--color-error));
-  }
-  
-  .border-outline {
-    border-color: rgb(var(--color-surface-variant));
-  }
-  
-  .ring-primary {
-    --tw-ring-color: rgb(var(--color-primary));
-  }
+  /* Backgrounds */
+  .bg-background { background-color: rgb(var(--color-background)); }
+  .bg-surface { background-color: rgb(var(--color-surface)); }
+  .bg-surface-variant { background-color: rgb(var(--color-surface-variant)); }
+  .bg-primary { background-color: rgb(var(--color-primary)); }
+  .bg-secondary { background-color: rgb(var(--color-secondary)); }
+  .bg-tertiary { background-color: rgb(var(--color-tertiary)); }
+  .bg-accent { background-color: rgb(var(--color-accent)); }
+  .bg-error { background-color: rgb(var(--color-error)); }
+  .bg-panic { background-color: rgb(var(--color-panic)); }
+
+  /* Text */
+  .text-on-surface { color: rgb(var(--color-on-surface)); }
+  .text-on-surface-variant { color: rgb(var(--color-on-surface-variant)); }
+  .text-on-primary { color: rgb(var(--color-on-primary)); }
+  .text-primary { color: rgb(var(--color-primary)); }
+  .text-secondary { color: rgb(var(--color-secondary)); }
+  .text-accent { color: rgb(var(--color-accent)); }
+  .text-error { color: rgb(var(--color-error)); }
+
+  /* Borders */
+  .border-outline { border-color: rgb(var(--color-surface-variant)); }
+  .border-surface-variant { border-color: rgb(var(--color-surface-variant)); }
+
+  /* Rings */
+  .ring-primary { --tw-ring-color: rgb(var(--color-primary)); }
 }

@@ -7,21 +7,19 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#f0f4ff',
-          100: '#e0e8ff',
-          500: '#6750A4',
-          600: '#5b4791',
-          700: '#4f3d7e',
-        },
-        panic: {
-          500: '#DC2626',
-          600: '#b91c1c',
-        },
-        surface: {
-          light: '#FFFFFF',
-          dark: '#1C1B1F',
-        }
+        /* Directly map CSS vars to Tailwind */
+        background: "rgb(var(--color-background) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        "surface-variant": "rgb(var(--color-surface-variant) / <alpha-value>)",
+        "on-surface": "rgb(var(--color-on-surface) / <alpha-value>)",
+        "on-surface-variant": "rgb(var(--color-on-surface-variant) / <alpha-value>)",
+        primary: "rgb(var(--color-primary) / <alpha-value>)",
+        "on-primary": "rgb(var(--color-on-primary) / <alpha-value>)",
+        secondary: "rgb(var(--color-secondary) / <alpha-value>)",
+        tertiary: "rgb(var(--color-tertiary) / <alpha-value>)",
+        accent: "rgb(var(--color-accent) / <alpha-value>)",
+        error: "rgb(var(--color-error) / <alpha-value>)",
+        panic: "rgb(var(--color-panic) / <alpha-value>)",
       },
       animation: {
         'pulse-emergency': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
