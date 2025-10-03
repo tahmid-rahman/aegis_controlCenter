@@ -6,10 +6,10 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 // import Emergencies from './pages/Emergencies'
-// import Responders from './pages/Responders'
+import Responders from './pages/Responders'
 // import Analytics from './pages/Analytics'
 // import Reports from './pages/Reports'
-// import Settings from './pages/Settings'
+import Settings from './pages/Settings'
 import './styles/globals.css'
 
 function App() {
@@ -20,11 +20,11 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              {/* <Route path="/emergencies" element={<Emergencies />} />
+              {/* <Route path="/emergencies" element={<Emergencies />} /> */}
               <Route path="/responders" element={<Responders />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/settings" element={<Settings />} /> */}
+              {/* <Route path="/analytics" element={<Analytics />} /> */}
+              {/* <Route path="/reports" element={<Reports />} /> */}
+              <Route path="/settings" element={<Settings />} />
             </Routes>
           </Layout>
         </EmergencyProvider>
