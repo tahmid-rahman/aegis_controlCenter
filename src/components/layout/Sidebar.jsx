@@ -12,8 +12,12 @@ import {
   ChevronRight,
   Shield,
   Radio,
-  Wifi
+  Wifi,
+  ListVideo,
+  MessageCircle,
+  BookPlus,
 } from 'lucide-react'
+
 import { useEmergencies } from '../../contexts/EmergencyContext'
 
 const Sidebar = () => {
@@ -63,6 +67,13 @@ const Sidebar = () => {
       badge: null
     },
     {
+      name: 'Messages',
+      href: '/messages',
+      icon: MessageCircle,
+      current: location.pathname === '/messages',
+      badge: null
+    },
+    {
       name: 'Analytics',
       href: '/analytics',
       icon: BarChart3,
@@ -75,6 +86,20 @@ const Sidebar = () => {
       icon: FileText,
       current: location.pathname === '/reports',
       badge: null
+    },
+    {
+        name: 'Evidence',
+        href: '/evidence',
+        icon: ListVideo,
+        current: location.pathname === '/evidence',
+        badge: null
+    },
+    {
+        name: 'Resources',
+        href: '/resources',
+        icon: BookPlus,
+        current: location.pathname === '/resources',
+        badge: null
     },
     {
       name: 'Settings',
