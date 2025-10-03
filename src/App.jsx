@@ -13,6 +13,7 @@ import Analytics from './pages/Analytics'
 import Reports from './pages/Reports'
 import Resources from './pages/Resources'
 import Settings from './pages/Settings'
+import Login from './pages/Login'
 import './styles/globals.css'
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
         <EmergencyProvider>
           <Layout>
             <Routes>
+              <Route path="/login" element={<Login />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/emergencies" element={<Emergencies />} />
               <Route path="/responders" element={<Responders />} />
