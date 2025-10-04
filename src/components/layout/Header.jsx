@@ -1,8 +1,10 @@
 // src/components/layout/Header.jsx
 import React, { useState, useEffect } from 'react'
-import { Bell, Search, User, LogOut, Settings, Moon, Sun, Monitor } from 'lucide-react'
+import { Bell, Search, User, LogOut, Settings, Moon, Sun, Monitor, Router } from 'lucide-react'
 import { useEmergencies } from '../../contexts/EmergencyContext'
 import { useTheme } from '../../contexts/ThemeContext'
+import { useNavigate } from "react-router-dom";
+import { useAuth } from '../../contexts/AuthContext'
 
 const Header = () => {
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -11,6 +13,8 @@ const Header = () => {
   const [showThemeMenu, setShowThemeMenu] = useState(false)
   const { emergencies } = useEmergencies()
   const { isDark, toggleTheme } = useTheme()
+  const navigate = useNavigate();
+  const { logout } = useAuth()
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -18,6 +22,11 @@ const Header = () => {
     }, 1000)
     return () => clearInterval(timer)
   }, [])
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   const activeEmergencies = emergencies.filter(e => 
     e.status === 'active' || e.status === 'assigned'
@@ -221,16 +230,22 @@ const Header = () => {
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-lg border border-outline z-50">
                 <div className="p-2">
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-variant rounded-md transition-colors">
+                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-variant rounded-md transition-colors"
+                  onClick={() => navigate("/settings")}
+                  >
                     <Settings className="h-4 w-4" />
                     <span>Settings</span>
                   </button>
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-variant rounded-md transition-colors">
+                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-variant rounded-md transition-colors"
+                  onClick={() => navigate("/profile")}
+                  >
                     <User className="h-4 w-4" />
                     <span>Profile</span>
                   </button>
                   <hr className="my-2 border-outline" />
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-error hover:bg-error/10 rounded-md transition-colors">
+                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-error hover:bg-error/10 rounded-md transition-colors"
+                  onClick={() => {handleLogout()}}
+                  >
                     <LogOut className="h-4 w-4" />
                     <span>Logout</span>
                   </button>

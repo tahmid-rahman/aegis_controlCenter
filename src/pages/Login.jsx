@@ -2,13 +2,14 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Shield, Eye, EyeOff, LogIn, AlertCircle, User, Lock } from 'lucide-react'
-
+import { useAuth } from '../contexts/AuthContext'
 const Login = () => {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false
+  const { login, error: authError } = useAuth()
+  const [formData, setFormData] = useState({ 
+    email: '', 
+    password: '', 
+    rememberMe: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -16,32 +17,32 @@ const Login = () => {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    setError('') // Clear error when user starts typing
+    setError('')
   }
+
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
 
-    // Simulate API call
-    setTimeout(() => {
-      if (formData.email === 'admin@aegis.com' && formData.password === 'password') {
-        // Successful login
-        localStorage.setItem('aegis-auth', 'true')
-        navigate('/control-center')
-      } else {
-        setError('Invalid email or password. Please try again.')
+    setTimeout(async () => {
+      try {
+        await login(formData.email, formData.password)
+        console.log('Login successful in component')
+      } catch (err) {
+        console.error('Login error in component:', err)
+        setError(err.message || "Login failed. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }, 1500)
   }
-
   const demoCredentials = [
     { role: 'Control Center Admin', email: 'admin@aegis.com', password: 'password' },
-    { role: 'Emergency Responder', email: 'responder@aegis.com', password: 'password' },
-    { role: 'View Only Access', email: 'viewer@aegis.com', password: 'password' }
   ]
+  const combinedError = error || authError
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -84,7 +85,7 @@ const Login = () => {
 
           {/* Login Form */}
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            {error && (
+            {combinedError && (
               <div className="bg-error/10 border border-error/20 rounded-lg p-4 flex items-center space-x-3">
                 <AlertCircle className="h-5 w-5 text-error" />
                 <span className="text-error text-sm">{error}</span>
@@ -167,9 +168,9 @@ const Login = () => {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-primary hover:text-primary/80">
+                <Link href="#" className="font-medium text-primary hover:text-primary/80">
                   Forgot your password?
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -205,7 +206,7 @@ const Login = () => {
           {/* Back to Welcome */}
           <div className="mt-8 text-center">
             <Link 
-              to="/" 
+              to="/welcome" 
               className="text-primary hover:text-primary/80 font-medium text-sm"
             >
               ← Back to Aegis homepage
