@@ -1,5 +1,5 @@
-// src/pages/Resources.jsx
-import React, { useState, useEffect } from 'react'
+for the given code complete // src/pages/Resources.jsx
+import React, { useState } from 'react'
 import { 
   BookOpen,
   Plus,
@@ -25,11 +25,8 @@ import {
   Save,
   X,
   Link,
-  Image,
-  Loader,
-  FolderPlus
+  Image
 } from 'lucide-react'
-import api from '../services/api'
 
 const Resources = () => {
   const [activeTab, setActiveTab] = useState('resources')
@@ -39,27 +36,105 @@ const Resources = () => {
   const [difficultyFilter, setDifficultyFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showQuizModal, setShowQuizModal] = useState(false)
-  const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [selectedResource, setSelectedResource] = useState(null)
   const [editingResource, setEditingResource] = useState(null)
   const [currentStep, setCurrentStep] = useState(1)
-  const [loading, setLoading] = useState(false)
-  const [resourceCategories, setResourceCategories] = useState([])
-  const [learningResources, setLearningResources] = useState([])
-  const [userProgress, setUserProgress] = useState([])
-  const [showViewModal, setShowViewModal] = useState(false)
-  const [currentResource, setCurrentResource] = useState(null)
-  const [stats, setStats] = useState({
-    totalResources: 0,
-    publishedResources: 0,
-    totalQuizzes: 0,
-    activeUsers: 0
-  })
 
-  const handleViewResource = (resource) => {
-  setCurrentResource(resource)
-  setShowViewModal(true)
-  }
+  // Mock data based on your Django models
+  const resourceCategories = [
+    { id: 1, name: 'Self Defense', description: 'Personal protection techniques', icon: '🥋', order: 1, is_active: true },
+    { id: 2, name: 'Legal Rights', description: 'Know your legal protections', icon: '⚖️', order: 2, is_active: true },
+    { id: 3, name: 'Emergency Procedures', description: 'What to do in emergencies', icon: '🚨', order: 3, is_active: true },
+    { id: 4, name: 'Digital Safety', description: 'Online protection guides', icon: '💻', order: 4, is_active: true },
+    { id: 5, name: 'Community Resources', description: 'Local support organizations', icon: '🏘️', order: 5, is_active: true }
+  ]
+
+  const learningResources = [
+    {
+      id: 1,
+      title: 'Basic Self-Defense Techniques',
+      description: 'Learn fundamental self-defense moves for personal protection',
+      content: '# Basic Self-Defense Techniques\n\n## Introduction\nSelf-defense is about using simple, effective techniques to protect yourself...',
+      resource_type: 'article',
+      difficulty: 'beginner',
+      duration: '8 min read',
+      icon: '📄',
+      category: 1,
+      video_url: null,
+      thumbnail: null,
+      is_published: true,
+      order: 1,
+      created_at: '2024-01-15T10:00:00Z',
+      updated_at: '2024-01-15T10:00:00Z',
+      external_links: [
+        { id: 1, title: 'Self-Defense Video Tutorial', url: 'https://example.com/video1', description: 'Complementary video tutorial' }
+      ],
+      quiz_questions: [
+        {
+          id: 1,
+          question: 'What is the primary goal of self-defense?',
+          explanation: 'The main goal is to create an opportunity to escape safely, not to defeat the attacker.',
+          order: 1,
+          options: [
+            { id: 1, text: 'To defeat the attacker completely', is_correct: false, order: 1 },
+            { id: 2, text: 'To create an opportunity to escape', is_correct: true, order: 2 },
+            { id: 3, text: 'To prove your strength', is_correct: false, order: 3 }
+          ]
+        }
+      ]
+    },
+    {
+      id: 2,
+      title: 'Understanding Your Legal Rights',
+      description: 'Comprehensive guide to legal protections against harassment',
+      content: '# Your Legal Rights\n\n## Introduction\nIn Bangladesh, several laws protect individuals from harassment and violence...',
+      resource_type: 'guide',
+      difficulty: 'intermediate',
+      duration: '15 min read',
+      icon: '📖',
+      category: 2,
+      video_url: null,
+      thumbnail: null,
+      is_published: true,
+      order: 1,
+      created_at: '2024-01-10T14:30:00Z',
+      updated_at: '2024-01-12T09:15:00Z',
+      external_links: [],
+      quiz_questions: []
+    },
+    {
+      id: 3,
+      title: 'Emergency Response Quiz',
+      description: 'Test your knowledge of emergency procedures',
+      resource_type: 'quiz',
+      difficulty: 'beginner',
+      duration: '5 min',
+      icon: '❓',
+      category: 3,
+      content: '',
+      video_url: null,
+      thumbnail: null,
+      is_published: true,
+      order: 1,
+      created_at: '2024-01-08T16:45:00Z',
+      updated_at: '2024-01-08T16:45:00Z',
+      external_links: [],
+      quiz_questions: [
+        {
+          id: 2,
+          question: 'What should be your first action when activating emergency mode?',
+          explanation: 'Your safety is the priority. First ensure you are in a safe position, then activate emergency features.',
+          order: 1,
+          options: [
+            { id: 4, text: 'Start recording video immediately', is_correct: false, order: 1 },
+            { id: 5, text: 'Ensure you are in a safe position', is_correct: true, order: 2 },
+            { id: 6, text: 'Call your family first', is_correct: false, order: 3 }
+          ]
+        }
+      ]
+    }
+  ]
+
   // Form states
   const [resourceForm, setResourceForm] = useState({
     title: '',
@@ -77,8 +152,6 @@ const Resources = () => {
   const [quizForm, setQuizForm] = useState({
     title: '',
     description: '',
-    content: 'Quiz content', // Required field for backend
-    resource_type: 'quiz',
     difficulty: 'beginner',
     duration: '5 min',
     category: '',
@@ -97,50 +170,10 @@ const Resources = () => {
     ]
   })
 
-  const [categoryForm, setCategoryForm] = useState({
-    name: '',
-    description: '',
-    icon: '📚',
-    order: 0,
-    is_active: true
-  })
-
-  // Fetch data on component mount
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    setLoading(true)
-    try {
-      const [categoriesRes, resourcesRes, progressRes] = await Promise.all([
-        api.get('/aegis/learn/categories/'),
-        api.get('/aegis/learn/resources/'),
-        api.get('/aegis/learn/progress/')
-      ])
-
-      setResourceCategories(categoriesRes.data)
-      setLearningResources(resourcesRes.data)
-      setUserProgress(progressRes.data)
-
-      // Calculate stats
-      const totalResources = resourcesRes.data.length
-      const publishedResources = resourcesRes.data.filter(r => r.is_published).length
-      const totalQuizzes = resourcesRes.data.filter(r => r.resource_type === 'quiz').length
-
-      setStats({
-        totalResources,
-        publishedResources,
-        totalQuizzes,
-        activeUsers: 1542
-      })
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      alert('Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const userProgress = [
+    { resource_id: 1, completed: true, progress_percentage: 100, bookmarked: true, time_spent: 480 },
+    { resource_id: 2, completed: false, progress_percentage: 60, bookmarked: false, time_spent: 540 }
+  ]
 
   const getResourceIcon = (resourceType) => {
     switch (resourceType) {
@@ -183,48 +216,23 @@ const Resources = () => {
     return matchesSearch && matchesCategory && matchesType && matchesDifficulty
   })
 
-  const handleDeleteResource = async (resourceId) => {
+  const stats = {
+    totalResources: learningResources.length,
+    publishedResources: learningResources.filter(r => r.is_published).length,
+    totalQuizzes: learningResources.filter(r => r.resource_type === 'quiz').length,
+    activeUsers: 1542
+  }
+
+  const handleDeleteResource = (resourceId) => {
     if (window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
-      try {
-        await api.delete(`/aegis/learn/resources/${resourceId}/delete/`)
-        setLearningResources(prev => prev.filter(r => r.id !== resourceId))
-      } catch (error) {
-        console.error('Error deleting resource:', error)
-        alert('Failed to delete resource', error.response?.data?.message || '')
-      }
+      // API call to delete resource
+      console.log('Deleting resource:', resourceId)
     }
   }
 
-  const handleTogglePublish = async (resource) => {
-    try {
-      const updatedResource = { ...resource, is_published: !resource.is_published }
-      await api.put(`/aegis/learn/resources/${resource.id}/update-visibility/`, updatedResource)
-      
-      setLearningResources(prev => 
-        prev.map(r => r.id === resource.id ? updatedResource : r)
-      )
-    } catch (error) {
-      console.error('Error updating resource:', error)
-      alert('Failed to update resource')
-    }
-  }
-
-  const handleToggleBookmark = async (resourceId) => {
-    try {
-      const response = await api.post(`/aegis/learn/resources/${resourceId}/bookmark/`)
-      const { bookmarked } = response.data
-      
-      setUserProgress(prev => 
-        prev.map(p => 
-          p.resource === resourceId 
-            ? { ...p, bookmarked }
-            : p
-        )
-      )
-    } catch (error) {
-      console.error('Error toggling bookmark:', error)
-      alert('Failed to update bookmark')
-    }
+  const handleTogglePublish = (resource) => {
+    // API call to toggle publish status
+    console.log('Toggling publish status for:', resource.id)
   }
 
   const handleResourceInputChange = (field, value) => {
@@ -236,13 +244,6 @@ const Resources = () => {
 
   const handleQuizInputChange = (field, value) => {
     setQuizForm(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
-  const handleCategoryInputChange = (field, value) => {
-    setCategoryForm(prev => ({
       ...prev,
       [field]: value
     }))
@@ -317,9 +318,11 @@ const Resources = () => {
 
   const handleSetCorrectAnswer = (questionIndex, optionIndex) => {
     const updatedQuestions = [...quizForm.questions]
+    // Set all options to false first
     updatedQuestions[questionIndex].options.forEach(option => {
       option.is_correct = false
     })
+    // Set the selected option to correct
     updatedQuestions[questionIndex].options[optionIndex].is_correct = true
     setQuizForm(prev => ({
       ...prev,
@@ -327,7 +330,8 @@ const Resources = () => {
     }))
   }
 
-  const handleCreateResource = async () => {
+  const handleCreateResource = () => {
+    // Validate form
     if (!resourceForm.title || !resourceForm.description || !resourceForm.category) {
       alert('Please fill in all required fields')
       return
@@ -338,64 +342,31 @@ const Resources = () => {
       return
     }
 
-    try {
-      const resourceData = {
-        title: resourceForm.title,
-        description: resourceForm.description,
-        content: resourceForm.content,
-        resource_type: resourceForm.resource_type,
-        difficulty: resourceForm.difficulty,
-        duration: resourceForm.duration,
-        category: parseInt(resourceForm.category),
-        video_url: resourceForm.video_url || '',
-        is_published: resourceForm.is_published
-      }
-
-      const response = await api.post('/aegis/learn/resources/create/', resourceData)
-      
-      // Create external links if any
-      if (resourceForm.external_links.length > 0) {
-        const resourceId = response.data.data.id
-        for (let link of resourceForm.external_links) {
-          if (link.title && link.url) {
-            await api.post(`/aegis/learn/resources/${resourceId}/external-links/create/`, {
-              title: link.title,
-              url: link.url,
-              description: link.description || ''
-            })
-          }
-        }
-      }
-
-      setLearningResources(prev => [...prev, response.data.data])
-      setShowAddModal(false)
-      setResourceForm({
-        title: '',
-        description: '',
-        content: '',
-        resource_type: 'article',
-        difficulty: 'beginner',
-        duration: '',
-        category: '',
-        video_url: '',
-        is_published: false,
-        external_links: [{ title: '', url: '', description: '' }]
-      })
-      
-      // alert('Resource created successfully')
-    } catch (error) {
-      console.error('Error creating resource:', error)
-      console.log('Error details:', error.response?.data)
-      alert(`Failed to create resource: ${error.response?.data?.message || 'Unknown error'}`)
-    }
+    // API call to create resource
+    console.log('Creating resource:', resourceForm)
+    setShowAddModal(false)
+    setResourceForm({
+      title: '',
+      description: '',
+      content: '',
+      resource_type: 'article',
+      difficulty: 'beginner',
+      duration: '',
+      category: '',
+      video_url: '',
+      is_published: false,
+      external_links: [{ title: '', url: '', description: '' }]
+    })
   }
 
-  const handleCreateQuiz = async () => {
+  const handleCreateQuiz = () => {
+    // Validate form
     if (!quizForm.title || !quizForm.description || !quizForm.category) {
       alert('Please fill in all required fields')
       return
     }
 
+    // Validate questions
     for (let question of quizForm.questions) {
       if (!question.question.trim()) {
         alert('All questions must have text')
@@ -408,299 +379,30 @@ const Resources = () => {
       }
     }
 
-    try {
-      const quizResourceData = {
-        title: quizForm.title,
-        description: quizForm.description,
-        content: quizForm.content,
-        resource_type: 'quiz',
-        difficulty: quizForm.difficulty,
-        duration: quizForm.duration,
-        category: parseInt(quizForm.category),
-        is_published: quizForm.is_published
-      }
-
-      const resourceResponse = await api.post('/aegis/learn/resources/create/', quizResourceData)
-      const resourceId = resourceResponse.data.data.id
-
-      // Create questions and options
-      for (let question of quizForm.questions) {
-        const questionData = {
-          question: question.question,
-          explanation: question.explanation,
-          order: 0
+    // API call to create quiz
+    console.log('Creating quiz:', quizForm)
+    setShowQuizModal(false)
+    setQuizForm({
+      title: '',
+      description: '',
+      difficulty: 'beginner',
+      duration: '5 min',
+      category: '',
+      is_published: false,
+      questions: [
+        {
+          question: '',
+          explanation: '',
+          options: [
+            { text: '', is_correct: false },
+            { text: '', is_correct: false },
+            { text: '', is_correct: false },
+            { text: '', is_correct: false }
+          ]
         }
-
-        const questionResponse = await api.post(`/aegis/learn/resources/${resourceId}/quiz-questions/create/`, questionData)
-        const questionId = questionResponse.data.data.id
-
-        // Create options for this question
-        for (let option of question.options) {
-          if (option.text.trim()) {
-            await api.post(`/aegis/learn/quiz-questions/${questionId}/options/create/`, {
-              text: option.text,
-              is_correct: option.is_correct,
-              order: 0
-            })
-          }
-        }
-      }
-
-      await fetchData()
-      setShowQuizModal(false)
-      setQuizForm({
-        title: '',
-        description: '',
-        content: 'Quiz content',
-        resource_type: 'quiz',
-        difficulty: 'beginner',
-        duration: '5 min',
-        category: '',
-        is_published: false,
-        questions: [
-          {
-            question: '',
-            explanation: '',
-            options: [
-              { text: '', is_correct: false },
-              { text: '', is_correct: false },
-              { text: '', is_correct: false },
-              { text: '', is_correct: false }
-            ]
-          }
-        ]
-      })
-      
-      // alert('Quiz created successfully')
-    } catch (error) {
-      console.error('Error creating quiz:', error)
-      console.log('Error details:', error.response?.data)
-      alert(`Failed to create quiz: ${error.response?.data?.message || 'Unknown error'}`)
-    }
+      ]
+    })
   }
-
-  const handleCreateCategory = async () => {
-    if (!categoryForm.name.trim()) {
-      alert('Please enter a category name')
-      return
-    }
-
-    try {
-      const categoryData = {
-        name: categoryForm.name,
-        description: categoryForm.description,
-        icon: categoryForm.icon,
-        order: parseInt(categoryForm.order) || 0,
-        is_active: categoryForm.is_active
-      }
-
-      await api.post('/aegis/learn/categories/create/', categoryData)
-      await fetchData()
-      setShowCategoryModal(false)
-      setCategoryForm({
-        name: '',
-        description: '',
-        icon: '📚',
-        order: 0,
-        is_active: true
-      })
-      // alert('Category created successfully')
-    } catch (error) {
-      console.error('Error creating category:', error)
-      console.log('Error details:', error.response?.data)
-      alert(`Failed to create category: ${error.response?.data?.message || 'Unknown error'}`)
-    }
-  }
-
-  const getProgressForResource = (resourceId) => {
-    return userProgress.find(p => p.resource === resourceId)
-  }
-
-  const isBookmarked = (resourceId) => {
-    const progress = getProgressForResource(resourceId)
-    return progress?.bookmarked || false
-  }
-
-  const renderCreateCategoryModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-surface rounded-xl max-w-md w-full">
-        <div className="p-6 border-b border-outline">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-on-surface">Create New Category</h3>
-            <button
-              onClick={() => setShowCategoryModal(false)}
-              className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <p className="text-on-surface-variant mt-1">Add a new resource category</p>
-        </div>
-        
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-on-surface mb-2">
-              Category Name *
-            </label>
-            <input 
-              type="text" 
-              value={categoryForm.name}
-              onChange={(e) => handleCategoryInputChange('name', e.target.value)}
-              className="input-field w-full" 
-              placeholder="Enter category name" 
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-on-surface mb-2">
-              Description
-            </label>
-            <textarea 
-              value={categoryForm.description}
-              onChange={(e) => handleCategoryInputChange('description', e.target.value)}
-              className="input-field w-full h-20" 
-              placeholder="Enter category description"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-on-surface mb-2">
-                Icon
-              </label>
-              <input 
-                type="text" 
-                value={categoryForm.icon}
-                onChange={(e) => handleCategoryInputChange('icon', e.target.value)}
-                className="input-field w-full" 
-                placeholder="e.g., 📚" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-on-surface mb-2">
-                Order
-              </label>
-              <input 
-                type="number" 
-                value={categoryForm.order}
-                onChange={(e) => handleCategoryInputChange('order', parseInt(e.target.value) || 0)}
-                className="input-field w-full" 
-                placeholder="0" 
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-3 bg-surface-variant rounded-lg">
-            <div>
-              <div className="font-medium text-on-surface">Active</div>
-              <div className="text-sm text-on-surface-variant">Show this category to users</div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={categoryForm.is_active}
-                onChange={(e) => handleCategoryInputChange('is_active', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-            </label>
-          </div>
-        </div>
-        
-        <div className="flex space-x-3 p-6 border-t border-outline">
-          <button 
-            onClick={() => setShowCategoryModal(false)}
-            className="flex-1 bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={handleCreateCategory}
-            className="flex-1 btn-primary flex items-center justify-center space-x-2"
-          >
-            <Save className="h-4 w-4" />
-            <span>Create Category</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderCategoryFilterWithCreate = () => (
-    <div className="flex items-center space-x-2">
-      <select
-        value={categoryFilter}
-        onChange={(e) => setCategoryFilter(e.target.value)}
-        className="input-field"
-      >
-        <option value="all">All Categories</option>
-        {resourceCategories.map(category => (
-          <option key={category.id} value={category.id}>
-            {category.name}
-          </option>
-        ))}
-      </select>
-      
-      <button
-        onClick={() => setShowCategoryModal(true)}
-        className="p-2 bg-surface-variant text-on-surface hover:bg-surface rounded-lg transition-colors"
-        title="Create New Category"
-      >
-        <FolderPlus className="h-4 w-4" />
-      </button>
-    </div>
-  )
-
-  const renderResourceFormCategorySection = () => (
-    <div className="flex items-center space-x-2">
-      <select 
-        value={resourceForm.category}
-        onChange={(e) => handleResourceInputChange('category', e.target.value)}
-        className="input-field flex-1"
-      >
-        <option value="">Select Category</option>
-        {resourceCategories.map(category => (
-          <option key={category.id} value={category.id}>
-            {category.name}
-          </option>
-        ))}
-      </select>
-      
-      <button
-        onClick={() => setShowCategoryModal(true)}
-        className="p-2 bg-surface-variant text-on-surface hover:bg-surface rounded-lg transition-colors"
-        title="Create New Category"
-      >
-        <FolderPlus className="h-4 w-4" />
-      </button>
-    </div>
-  )
-
-  const renderQuizFormCategorySection = () => (
-    <div className="flex items-center space-x-2">
-      <select 
-        value={quizForm.category}
-        onChange={(e) => handleQuizInputChange('category', e.target.value)}
-        className="input-field flex-1"
-      >
-        <option value="">Select Category</option>
-        {resourceCategories.map(category => (
-          <option key={category.id} value={category.id}>
-            {category.name}
-          </option>
-        ))}
-      </select>
-      
-      <button
-        onClick={() => setShowCategoryModal(true)}
-        className="p-2 bg-surface-variant text-on-surface hover:bg-surface rounded-lg transition-colors"
-        title="Create New Category"
-      >
-        <FolderPlus className="h-4 w-4" />
-      </button>
-    </div>
-  )
 
   const renderResourcesTab = () => (
     <div className="space-y-6">
@@ -721,7 +423,18 @@ const Resources = () => {
           </div>
           
           <div className="flex flex-wrap gap-3">
-            {renderCategoryFilterWithCreate()}
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="input-field"
+            >
+              <option value="all">All Categories</option>
+              {resourceCategories.map(category => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
             
             <select
               value={typeFilter}
@@ -750,151 +463,138 @@ const Resources = () => {
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="card p-12 text-center">
-          <Loader className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-on-surface-variant">Loading resources...</p>
-        </div>
-      )}
-
       {/* Resources Grid */}
-      {!loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredResources.map(resource => {
-            const progress = getProgressForResource(resource.id)
-            const category = resourceCategories.find(c => c.id === resource.category)
-            
-            return (
-              <div key={resource.id} className="card p-6 group hover:shadow-lg transition-all">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">
-                      {getResourceIcon(resource.resource_type)}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-on-surface group-hover:text-primary transition-colors">
-                        {resource.title}
-                      </h3>
-                      <p className="text-sm text-on-surface-variant">
-                        {category?.name || 'Uncategorized'}
-                      </p>
-                    </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredResources.map(resource => {
+          const progress = userProgress.find(p => p.resource_id === resource.id)
+          const category = resourceCategories.find(c => c.id === resource.category)
+          
+          return (
+            <div key={resource.id} className="card p-6 group hover:shadow-lg transition-all">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">
+                    {getResourceIcon(resource.resource_type)}
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => setEditingResource(resource)}
-                      className="p-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded transition-colors"
-                      title="Edit"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteResource(resource.id)}
-                      className="p-1 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  <div>
+                    <h3 className="font-semibold text-on-surface group-hover:text-primary transition-colors">
+                      {resource.title}
+                    </h3>
+                    <p className="text-sm text-on-surface-variant">
+                      {category?.name || 'Uncategorized'}
+                    </p>
                   </div>
                 </div>
-
-                {/* Description */}
-                <p className="text-on-surface-variant text-sm mb-4 line-clamp-2">
-                  {resource.description}
-                </p>
-
-                {/* Metadata */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(resource.resource_type)}`}>
-                      {resource.resource_type}
-                    </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(resource.difficulty)}`}>
-                      {resource.difficulty}
-                    </span>
-                  </div>
-                  <div className="text-sm text-on-surface-variant">
-                    {resource.duration}
-                  </div>
-                </div>
-
-                {/* Progress */}
-                {progress && (
-                  <div className="mb-4">
-                    <div className="flex justify-between text-xs text-on-surface-variant mb-1">
-                      <span>Progress</span>
-                      <span>{progress.progress_percentage}%</span>
-                    </div>
-                    <div className="w-full bg-surface-variant rounded-full h-2">
-                      <div 
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${progress.progress_percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center space-x-2">
-                  <button className="flex-1 btn-primary py-2 text-sm flex items-center justify-center space-x-1">
-                    {resource.resource_type === 'quiz' ? (
-                      <>
-                        <Play className="h-4 w-4" />
-                        <span>Start Quiz</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="h-4 w-4" />
-                        <span>View</span>
-                      </>
-                    )}
-                  </button>
-                  
-                  <button 
-                    onClick={() => handleToggleBookmark(resource.id)}
-                    className="p-2 bg-surface-variant text-on-surface hover:bg-surface rounded transition-colors"
-                  >
-                    {isBookmarked(resource.id) ? (
-                      <BookmarkCheck className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Bookmark className="h-4 w-4" />
-                    )}
-                  </button>
-
+                <div className="flex items-center space-x-1">
                   <button
-                    onClick={() => handleTogglePublish(resource)}
-                    className={`p-2 rounded transition-colors ${
-                      resource.is_published 
-                        ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' 
-                        : 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20'
-                    }`}
+                    onClick={() => setEditingResource(resource)}
+                    className="p-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded transition-colors"
+                    title="Edit"
                   >
-                    {resource.is_published ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteResource(resource.id)}
+                    className="p-1 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-
-                {/* Quiz Info */}
-                {resource.resource_type === 'quiz' && resource.quiz_questions && (
-                  <div className="mt-3 pt-3 border-t border-outline">
-                    <div className="text-xs text-on-surface-variant">
-                      {resource.quiz_questions.length} questions
-                    </div>
-                  </div>
-                )}
               </div>
-            )
-          })}
-        </div>
-      )}
+
+              {/* Description */}
+              <p className="text-on-surface-variant text-sm mb-4 line-clamp-2">
+                {resource.description}
+              </p>
+
+              {/* Metadata */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(resource.resource_type)}`}>
+                    {resource.resource_type}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(resource.difficulty)}`}>
+                    {resource.difficulty}
+                  </span>
+                </div>
+                <div className="text-sm text-on-surface-variant">
+                  {resource.duration}
+                </div>
+              </div>
+
+              {/* Progress */}
+              {progress && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs text-on-surface-variant mb-1">
+                    <span>Progress</span>
+                    <span>{progress.progress_percentage}%</span>
+                  </div>
+                  <div className="w-full bg-surface-variant rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${progress.progress_percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center space-x-2">
+                <button className="flex-1 btn-primary py-2 text-sm flex items-center justify-center space-x-1">
+                  {resource.resource_type === 'quiz' ? (
+                    <>
+                      <Play className="h-4 w-4" />
+                      <span>Start Quiz</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4" />
+                      <span>View</span>
+                    </>
+                  )}
+                </button>
+                
+                <button className="p-2 bg-surface-variant text-on-surface hover:bg-surface rounded transition-colors">
+                  {progress?.bookmarked ? (
+                    <BookmarkCheck className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Bookmark className="h-4 w-4" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => handleTogglePublish(resource)}
+                  className={`p-2 rounded transition-colors ${
+                    resource.is_published 
+                      ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' 
+                      : 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20'
+                  }`}
+                >
+                  {resource.is_published ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <XCircle className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+
+              {/* Quiz Info */}
+              {resource.resource_type === 'quiz' && resource.quiz_questions && (
+                <div className="mt-3 pt-3 border-t border-outline">
+                  <div className="text-xs text-on-surface-variant">
+                    {resource.quiz_questions.length} questions
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
 
       {/* Empty State */}
-      {!loading && filteredResources.length === 0 && (
+      {filteredResources.length === 0 && (
         <div className="card p-12 text-center">
           <BookOpen className="h-16 w-16 text-on-surface-variant mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-on-surface mb-2">No resources found</h3>
@@ -975,7 +675,7 @@ const Resources = () => {
         <h3 className="text-xl font-semibold text-on-surface mb-4">Popular Resources</h3>
         <div className="space-y-3">
           {learningResources.slice(0, 3).map(resource => {
-            const progress = getProgressForResource(resource.id)
+            const progress = userProgress.find(p => p.resource_id === resource.id)
             return (
               <div key={resource.id} className="flex items-center justify-between p-3 bg-surface-variant rounded-lg">
                 <div className="flex items-center space-x-3">
@@ -1064,14 +764,25 @@ const Resources = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-on-surface mb-2">
-                  Category *
-                </label>
-                {renderResourceFormCategorySection()}
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-on-surface mb-2">
+                    Category *
+                  </label>
+                  <select 
+                    value={resourceForm.category}
+                    onChange={(e) => handleResourceInputChange('category', e.target.value)}
+                    className="input-field w-full"
+                  >
+                    <option value="">Select Category</option>
+                    {resourceCategories.map(category => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-on-surface mb-2">
                     Difficulty
@@ -1086,19 +797,19 @@ const Resources = () => {
                     <option value="advanced">Advanced</option>
                   </select>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-on-surface mb-2">
-                    Duration
-                  </label>
-                  <input 
-                    type="text" 
-                    value={resourceForm.duration}
-                    onChange={(e) => handleResourceInputChange('duration', e.target.value)}
-                    className="input-field w-full" 
-                    placeholder="e.g., '5 min read', '10 min video'" 
-                  />
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-on-surface mb-2">
+                  Duration
+                </label>
+                <input 
+                  type="text" 
+                  value={resourceForm.duration}
+                  onChange={(e) => handleResourceInputChange('duration', e.target.value)}
+                  className="input-field w-full" 
+                  placeholder="e.g., '5 min read', '10 min video'" 
+                />
               </div>
 
               {resourceForm.resource_type === 'video' && (
@@ -1278,24 +989,23 @@ const Resources = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-on-surface mb-2">
-                  Content
-                </label>
-                <textarea 
-                  value={quizForm.content}
-                  onChange={(e) => handleQuizInputChange('content', e.target.value)}
-                  className="input-field w-full h-20" 
-                  placeholder="Quiz content (optional)"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-on-surface mb-2">
                     Category *
                   </label>
-                  {renderQuizFormCategorySection()}
+                  <select 
+                    value={quizForm.category}
+                    onChange={(e) => handleQuizInputChange('category', e.target.value)}
+                    className="input-field w-full"
+                  >
+                    <option value="">Select Category</option>
+                    {resourceCategories.map(category => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 
                 <div>
@@ -1464,19 +1174,12 @@ const Resources = () => {
           
           <div className="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-0">
             <button 
-              onClick={() => setShowCategoryModal(true)}
-              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors inline-flex items-center space-x-2"
-            >
-              <FolderPlus className="h-4 w-4" />
-              <span>Create Category</span>
-            </button>
-            {/* <button 
               onClick={() => setShowQuizModal(true)}
               className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors inline-flex items-center space-x-2"
             >
               <HelpCircle className="h-4 w-4" />
               <span>Create Quiz</span>
-            </button> */}
+            </button>
             <button 
               onClick={() => setShowAddModal(true)}
               className="btn-primary inline-flex items-center space-x-2"
@@ -1518,10 +1221,9 @@ const Resources = () => {
         {/* Modals */}
         {showAddModal && renderCreateResourceModal()}
         {showQuizModal && renderCreateQuizModal()}
-        {showCategoryModal && renderCreateCategoryModal()}
       </div>
     </div>
   )
 }
 
-export default Resources
+export default Resources 

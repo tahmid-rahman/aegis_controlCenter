@@ -69,7 +69,7 @@ const Reports = () => {
       setLoading(true)
       const response = await api.get('/aegis/reports/')
       console.log(localStorage.getItem('token'))
-      console.log(response.data)
+      // console.log(response.data)
       setIncidentReports(response.data)
       setError('')
     } catch (err) {
