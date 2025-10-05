@@ -90,3 +90,5 @@
   /* Rings */
   .ring-primary { --tw-ring-color: rgb(var(--color-primary)); }
 }
+
+@import "leaflet/dist/leaflet.css";

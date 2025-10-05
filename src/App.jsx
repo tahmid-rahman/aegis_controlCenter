@@ -20,6 +20,7 @@ import Welcome from './pages/Welcome'
 import TestApiConnection from './services/testApiConnection'
 import './styles/globals.css'
 
+
 // Loading component
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
