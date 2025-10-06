@@ -1,5 +1,5 @@
 // src/pages/Evidence.jsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   Video,
   Play,
@@ -18,8 +18,11 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Plus,
+  Upload
 } from 'lucide-react'
+import api from '../services/api'
 
 const Evidence = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -28,105 +31,58 @@ const Evidence = () => {
   const [selectedEvidence, setSelectedEvidence] = useState(null)
   const [showVideoModal, setShowVideoModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [evidenceList, setEvidenceList] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [stats, setStats] = useState({
+    total: 0,
+    verified: 0,
+    pending: 0,
+    under_review: 0,
+    total_duration_seconds: 0,
+    total_file_size: 0
+  })
 
-  // Mock evidence data based on your Django model
-  const evidenceList = [
-    {
-      id: 1,
-      title: 'Silently Captured Evidence - Harassment Incident',
-      video_file: '/videos/evidence_001.mp4',
-      location_lat: 23.7806,
-      location_lng: 90.4143,
-      location_address: 'Gulshan 1, Road 45, Dhaka, Bangladesh',
-      recorded_at: '2024-01-15T14:30:00Z',
-      is_anonymous: false,
-      duration_seconds: 127,
-      file_size: 15482931, // 15.5 MB
-      created_at: '2024-01-15T14:35:00Z',
-      updated_at: '2024-01-15T14:35:00Z',
-      user: {
-        id: 1,
-        email: 'user@example.com',
-        name: 'Anonymous User'
-      },
-      related_emergency: 'EMG-2024-0012',
-      status: 'verified',
-      type: 'harassment',
-      description: 'Video evidence of verbal harassment near shopping area',
-      tags: ['harassment', 'public_space', 'verbal_abuse']
-    },
-    {
-      id: 2,
-      title: 'Silently Captured Evidence - Stalking Evidence',
-      video_file: '/videos/evidence_002.mp4',
-      location_lat: 23.7465,
-      location_lng: 90.3760,
-      location_address: 'Dhanmondi Road 27, Dhaka, Bangladesh',
-      recorded_at: '2024-01-14T20:15:00Z',
-      is_anonymous: true,
-      duration_seconds: 45,
-      file_size: 8321456, // 8.3 MB
-      created_at: '2024-01-14T20:20:00Z',
-      updated_at: '2024-01-14T20:20:00Z',
-      user: {
-        id: 2,
-        email: 'anonymous@shieldplus.bd',
-        name: 'Anonymous'
-      },
-      related_emergency: 'EMG-2024-0011',
-      status: 'pending',
-      type: 'stalking',
-      description: 'Footage of individual following victim',
-      tags: ['stalking', 'following', 'night_time']
-    },
-    {
-      id: 3,
-      title: 'Silently Captured Evidence - Robbery Attempt',
-      video_file: '/videos/evidence_003.mp4',
-      location_lat: 23.7550,
-      location_lng: 90.3840,
-      location_address: 'Farmgate Bus Stand, Dhaka, Bangladesh',
-      recorded_at: '2024-01-13T18:45:00Z',
-      is_anonymous: false,
-      duration_seconds: 89,
-      file_size: 12458742, // 12.5 MB
-      created_at: '2024-01-13T18:50:00Z',
-      updated_at: '2024-01-13T18:50:00Z',
-      user: {
-        id: 3,
-        email: 'reporter@example.com',
-        name: 'Rahman Khan'
-      },
-      related_emergency: 'EMG-2024-0010',
-      status: 'verified',
-      type: 'robbery',
-      description: 'Attempted bag snatching incident',
-      tags: ['robbery', 'bus_stand', 'public_transport']
-    },
-    {
-      id: 4,
-      title: 'Silently Captured Evidence - Assault Evidence',
-      video_file: '/videos/evidence_004.mp4',
-      location_lat: 23.8759,
-      location_lng: 90.3795,
-      location_address: 'Uttara Sector 7, Dhaka, Bangladesh',
-      recorded_at: '2024-01-12T22:30:00Z',
-      is_anonymous: false,
-      duration_seconds: 156,
-      file_size: 19874523, // 19.9 MB
-      created_at: '2024-01-12T22:35:00Z',
-      updated_at: '2024-01-12T22:35:00Z',
-      user: {
-        id: 4,
-        email: 'victim@example.com',
-        name: 'Fatima Begum'
-      },
-      status: 'under_review',
-      type: 'assault',
-      description: 'Physical assault near residential area',
-      tags: ['assault', 'physical_violence', 'residential']
+  // Form state for new evidence
+  const [newEvidence, setNewEvidence] = useState({
+    title: 'Silently Captured Evidence',
+    location_lat: '',
+    location_lng: '',
+    location_address: '',
+    recorded_at: new Date().toISOString().slice(0, 16),
+    is_anonymous: false,
+    duration_seconds: 0
+  })
+  const [videoFile, setVideoFile] = useState(null)
+
+  // Fetch evidence data
+  useEffect(() => {
+    fetchEvidence()
+    fetchStatistics()
+  }, [])
+
+  const fetchEvidence = async () => {
+    try {
+      setLoading(true)
+      const response = await api.get('/aegis/evidence/list/')
+      setEvidenceList(response.data)
+    } catch (error) {
+      console.error('Error fetching evidence:', error)
+      alert('Failed to load evidence data')
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  const fetchStatistics = async () => {
+    try {
+      const response = await api.get('/aegis/evidence/statistics/')
+      setStats(response.data)
+    } catch (error) {
+      console.error('Error fetching statistics:', error)
+    }
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -139,13 +95,14 @@ const Evidence = () => {
   }
 
   const getTypeColor = (type) => {
-    switch (type) {
-      case 'harassment': return 'text-purple-500 bg-purple-500/10'
-      case 'stalking': return 'text-orange-500 bg-orange-500/10'
-      case 'robbery': return 'text-red-500 bg-red-500/10'
-      case 'assault': return 'text-pink-500 bg-pink-500/10'
-      default: return 'text-gray-500 bg-gray-500/10'
+    // Map evidence types based on your data structure
+    const typeMap = {
+      harassment: 'text-purple-500 bg-purple-500/10',
+      stalking: 'text-orange-500 bg-orange-500/10',
+      robbery: 'text-red-500 bg-red-500/10',
+      assault: 'text-pink-500 bg-pink-500/10'
     }
+    return typeMap[type] || 'text-gray-500 bg-gray-500/10'
   }
 
   const getStatusIcon = (status) => {
@@ -159,6 +116,7 @@ const Evidence = () => {
   }
 
   const getFileSizeDisplay = (fileSize) => {
+    if (!fileSize) return '0 B'
     if (fileSize < 1024) {
       return `${fileSize} B`
     } else if (fileSize < 1024 * 1024) {
@@ -171,6 +129,7 @@ const Evidence = () => {
   }
 
   const getDurationDisplay = (seconds) => {
+    if (!seconds) return '0s'
     if (seconds < 60) {
       return `${seconds}s`
     } else if (seconds < 3600) {
@@ -196,7 +155,7 @@ const Evidence = () => {
 
   const filteredEvidence = evidenceList.filter(evidence => {
     const matchesSearch = evidence.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         evidence.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (evidence.description && evidence.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
                          evidence.location_address.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || evidence.status === statusFilter
     const matchesType = typeFilter === 'all' || evidence.type === typeFilter
@@ -204,27 +163,126 @@ const Evidence = () => {
     return matchesSearch && matchesStatus && matchesType
   })
 
-  const stats = {
-    total: evidenceList.length,
-    verified: evidenceList.filter(e => e.status === 'verified').length,
-    pending: evidenceList.filter(e => e.status === 'pending').length,
-    under_review: evidenceList.filter(e => e.status === 'under_review').length
+  const handleDownload = async (evidence) => {
+    try {
+      if (evidence.video_file) {
+        // Create a temporary link to download the file
+        const link = document.createElement('a')
+        link.href = evidence.video_file
+        link.download = evidence.title + '.mp4'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      } else {
+        alert('No video file available for download')
+      }
+    } catch (error) {
+      console.error('Error downloading evidence:', error)
+      alert('Failed to download evidence')
+    }
   }
 
-  const handleDownload = (evidence) => {
-    // Simulate download
-    alert(`Downloading ${evidence.title}...`)
+  const handleDelete = async (evidenceId) => {
+    try {
+      await api.delete(`/aegis/evidence/${evidenceId}/delete/`)
+      setEvidenceList(evidenceList.filter(evidence => evidence.id !== evidenceId))
+      fetchStatistics()
+      setShowDeleteModal(false)
+      alert('Evidence deleted successfully')
+    } catch (error) {
+      console.error('Error deleting evidence:', error)
+      alert('Failed to delete evidence')
+    }
   }
 
-  const handleDelete = (evidenceId) => {
-    // Simulate delete
-    alert(`Evidence #${evidenceId} marked for deletion`)
-    setShowDeleteModal(false)
+  const handleSubmitEvidence = async () => {
+    try {
+      setUploading(true)
+      
+      // First create the evidence record
+      const evidenceResponse = await api.post('/aegis/evidence/submit/', newEvidence)
+      const evidenceId = evidenceResponse.data.evidence_id
+      
+      // Then upload the video file if provided
+      if (videoFile) {
+        const formData = new FormData()
+        formData.append('video_file', videoFile)
+        formData.append('media_type', 'video')
+        
+        await api.post(`/evidence/${evidenceId}/upload/`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+      }
+      
+      // Refresh the evidence list
+      await fetchEvidence()
+      await fetchStatistics()
+      
+      setShowUploadModal(false)
+      setNewEvidence({
+        title: 'Silently Captured Evidence',
+        location_lat: '',
+        location_lng: '',
+        location_address: '',
+        recorded_at: new Date().toISOString().slice(0, 16),
+        is_anonymous: false,
+        duration_seconds: 0
+      })
+      setVideoFile(null)
+      
+      alert('Evidence submitted successfully')
+    } catch (error) {
+      console.error('Error submitting evidence:', error)
+      alert('Failed to submit evidence: ' + (error.response?.data?.error || error.message))
+    } finally {
+      setUploading(false)
+    }
   }
 
-  const handleStatusUpdate = (evidenceId, newStatus) => {
-    // Simulate status update
-    alert(`Evidence #${evidenceId} status updated to ${newStatus}`)
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0]
+    if (file) {
+      // Validate file size (100MB max)
+      if (file.size > 100 * 1024 * 1024) {
+        alert('File size cannot exceed 100MB')
+        return
+      }
+      
+      // Validate file type
+      const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm']
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid video file (MP4, MOV, AVI, MKV, or WebM)')
+        return
+      }
+      
+      setVideoFile(file)
+
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      
+      video.onloadedmetadata = function() {
+        window.URL.revokeObjectURL(video.src)
+        setNewEvidence(prev => ({
+          ...prev,
+          duration_seconds: Math.floor(video.duration)
+        }))
+      }
+      
+      video.src = URL.createObjectURL(file)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-on-surface-variant mt-4">Loading evidence...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -238,7 +296,14 @@ const Evidence = () => {
           </p>
         </div>
         <div className="flex space-x-3 mt-4 lg:mt-0">
-          <button className="btn-primary flex items-center space-x-2">
+          <button 
+            onClick={() => setShowUploadModal(true)}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Upload Evidence</span>
+          </button>
+          <button className="btn-secondary flex items-center space-x-2">
             <FileText className="h-4 w-4" />
             <span>Generate Report</span>
           </button>
@@ -251,7 +316,7 @@ const Evidence = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-on-surface-variant">Total Evidence</p>
-              <p className="text-2xl font-bold text-on-surface mt-1">{stats.total}</p>
+              <p className="text-2xl font-bold text-on-surface mt-1">{stats.total_videos || 0}</p>
             </div>
             <Video className="h-8 w-8 text-primary" />
           </div>
@@ -260,30 +325,34 @@ const Evidence = () => {
         <div className="card p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-on-surface-variant">Verified</p>
-              <p className="text-2xl font-bold text-green-500 mt-1">{stats.verified}</p>
+              <p className="text-sm font-medium text-on-surface-variant">Total Duration</p>
+              <p className="text-2xl font-bold text-blue-500 mt-1">
+                {stats.total_duration_display || '0h 0m'}
+              </p>
+            </div>
+            <Clock className="h-8 w-8 text-blue-500" />
+          </div>
+        </div>
+        
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-on-surface-variant">Total Storage</p>
+              <p className="text-2xl font-bold text-purple-500 mt-1">
+                {stats.total_file_size_display || '0 GB'}
+              </p>
+            </div>
+            <FileText className="h-8 w-8 text-purple-500" />
+          </div>
+        </div>
+        
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-on-surface-variant">Recent (7d)</p>
+              <p className="text-2xl font-bold text-green-500 mt-1">{stats.recent_count || 0}</p>
             </div>
             <CheckCircle className="h-8 w-8 text-green-500" />
-          </div>
-        </div>
-        
-        <div className="card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-on-surface-variant">Pending Review</p>
-              <p className="text-2xl font-bold text-yellow-500 mt-1">{stats.pending}</p>
-            </div>
-            <Clock className="h-8 w-8 text-yellow-500" />
-          </div>
-        </div>
-        
-        <div className="card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-on-surface-variant">Under Review</p>
-              <p className="text-2xl font-bold text-blue-500 mt-1">{stats.under_review}</p>
-            </div>
-            <Eye className="h-8 w-8 text-blue-500" />
           </div>
         </div>
       </div>
@@ -365,17 +434,21 @@ const Evidence = () => {
             <div className="flex items-center space-x-2 mb-4">
               <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(evidence.status)}`}>
                 {getStatusIcon(evidence.status)}
-                <span className="capitalize">{evidence.status.replace('_', ' ')}</span>
+                <span className="capitalize">{evidence.status?.replace('_', ' ') || 'unknown'}</span>
               </span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getTypeColor(evidence.type)}`}>
-                {evidence.type}
-              </span>
+              {evidence.type && (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getTypeColor(evidence.type)}`}>
+                  {evidence.type}
+                </span>
+              )}
             </div>
 
             {/* Description */}
-            <p className="text-sm text-on-surface-variant mb-4 line-clamp-2">
-              {evidence.description}
-            </p>
+            {evidence.description && (
+              <p className="text-sm text-on-surface-variant mb-4 line-clamp-2">
+                {evidence.description}
+              </p>
+            )}
 
             {/* Video Preview */}
             <div 
@@ -385,33 +458,44 @@ const Evidence = () => {
                 setShowVideoModal(true)
               }}
             >
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Play className="h-6 w-6 text-gray-900 ml-1" />
+              {evidence.video_file ? (
+                <>
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Play className="h-6 w-6 text-gray-900 ml-1" />
+                    </div>
+                  </div>
+                  <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
+                    <span className="text-white text-sm font-medium bg-black/50 px-2 py-1 rounded">
+                      {getDurationDisplay(evidence.duration_seconds)}
+                    </span>
+                    <span className="text-white text-sm bg-black/50 px-2 py-1 rounded">
+                      {getFileSizeDisplay(evidence.file_size)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-on-surface-variant">
+                  <div className="text-center">
+                    <Video className="h-8 w-8 mx-auto mb-2" />
+                    <p className="text-sm">No video uploaded</p>
+                  </div>
                 </div>
-              </div>
-              <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
-                <span className="text-white text-sm font-medium bg-black/50 px-2 py-1 rounded">
-                  {getDurationDisplay(evidence.duration_seconds)}
-                </span>
-                <span className="text-white text-sm bg-black/50 px-2 py-1 rounded">
-                  {getFileSizeDisplay(evidence.file_size)}
-                </span>
-              </div>
+              )}
             </div>
 
             {/* Location and User Info */}
             <div className="space-y-3 mb-4">
               <div className="flex items-center space-x-2 text-sm text-on-surface-variant">
                 <MapPin className="h-4 w-4" />
-                <span className="line-clamp-1">{evidence.location_address}</span>
+                <span className="line-clamp-1">{evidence.location_address || 'No location specified'}</span>
               </div>
               
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center space-x-2 text-on-surface-variant">
                   <User className="h-4 w-4" />
                   <span>
-                    {evidence.is_anonymous ? 'Anonymous User' : evidence.user.name}
+                    {evidence.is_anonymous ? 'Anonymous User' : evidence.user_email}
                   </span>
                   {evidence.is_anonymous && (
                     <Shield className="h-3 w-3 text-green-500" />
@@ -452,12 +536,17 @@ const Evidence = () => {
                 className="flex-1 bg-surface-variant text-on-surface py-2 px-3 rounded-lg hover:bg-surface transition-colors text-sm font-medium flex items-center justify-center space-x-1"
               >
                 <Play className="h-4 w-4" />
-                <span>Play</span>
+                <span>View</span>
               </button>
               
               <button
                 onClick={() => handleDownload(evidence)}
-                className="flex-1 bg-surface-variant text-on-surface py-2 px-3 rounded-lg hover:bg-surface transition-colors text-sm font-medium flex items-center justify-center space-x-1"
+                disabled={!evidence.video_file}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center space-x-1 ${
+                  evidence.video_file 
+                    ? 'bg-surface-variant text-on-surface hover:bg-surface' 
+                    : 'bg-surface-variant/50 text-on-surface-variant cursor-not-allowed'
+                }`}
               >
                 <Download className="h-4 w-4" />
                 <span>Download</span>
@@ -482,12 +571,21 @@ const Evidence = () => {
         <div className="card p-12 text-center">
           <Video className="h-16 w-16 text-on-surface-variant mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-on-surface mb-2">No evidence found</h3>
-          <p className="text-on-surface-variant">
+          <p className="text-on-surface-variant mb-6">
             {evidenceList.length === 0 
-              ? "No video evidence has been uploaded yet."
+              ? "No video evidence has been uploaded yet. Start by uploading your first evidence."
               : "Try adjusting your search criteria."
             }
           </p>
+          {evidenceList.length === 0 && (
+            <button 
+              onClick={() => setShowUploadModal(true)}
+              className="btn-primary flex items-center space-x-2 mx-auto"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Upload First Evidence</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -510,15 +608,24 @@ const Evidence = () => {
             </div>
             
             <div className="p-6">
-              {/* Video Player Placeholder */}
+              {/* Video Player */}
               <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6">
-                <div className="text-center">
-                  <Video className="h-16 w-16 text-white/50 mx-auto mb-4" />
-                  <p className="text-white/70">Video Player</p>
-                  <p className="text-white/50 text-sm mt-2">
-                    {getDurationDisplay(selectedEvidence.duration_seconds)} • {getFileSizeDisplay(selectedEvidence.file_size)}
-                  </p>
-                </div>
+                {selectedEvidence.video_file ? (
+                  <video 
+                    controls 
+                    className="w-full h-full rounded-lg"
+                    poster={selectedEvidence.thumbnail}
+                  >
+                    {/* <source src={selectedEvidence.video_file} type="video/mp4" /> */} 
+                    <source src={`${process.env.REACT_APP_MEDIA_URL}${selectedEvidence.video_file}`} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                ) : (
+                  <div className="text-center text-white/70">
+                    <Video className="h-16 w-16 mx-auto mb-4" />
+                    <p>No video file available</p>
+                  </div>
+                )}
               </div>
               
               {/* Evidence Details */}
@@ -531,14 +638,12 @@ const Evidence = () => {
                       <span className="text-on-surface font-medium">#{selectedEvidence.id}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Type:</span>
-                      <span className="text-on-surface capitalize">{selectedEvidence.type}</span>
+                      <span className="text-on-surface-variant">Duration:</span>
+                      <span className="text-on-surface">{getDurationDisplay(selectedEvidence.duration_seconds)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Status:</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedEvidence.status)}`}>
-                        {selectedEvidence.status}
-                      </span>
+                      <span className="text-on-surface-variant">File Size:</span>
+                      <span className="text-on-surface">{getFileSizeDisplay(selectedEvidence.file_size)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-on-surface-variant">Recorded:</span>
@@ -551,13 +656,14 @@ const Evidence = () => {
                   <h4 className="font-medium text-on-surface mb-3">Location & User</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Location:</span>
-                      <span className="text-on-surface text-right">{selectedEvidence.location_address}</span>
+                      <span className="text-on-surface-variant">Location: </span>
+                      <span className="text-on-surface text-right">{selectedEvidence.location_address || 'Not specified'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-on-surface-variant">User:</span>
                       <span className="text-on-surface">
-                        {selectedEvidence.is_anonymous ? 'Anonymous' : selectedEvidence.user.name}
+                        {selectedEvidence.is_anonymous ? 'Anonymous' : selectedEvidence.user_email}
+                        
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -566,48 +672,40 @@ const Evidence = () => {
                         {selectedEvidence.is_anonymous ? 'Enabled' : 'Disabled'}
                       </span>
                     </div>
-                    {selectedEvidence.related_emergency && (
-                      <div className="flex justify-between">
-                        <span className="text-on-surface-variant">Emergency:</span>
-                        <span className="text-primary font-medium">{selectedEvidence.related_emergency}</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Uploaded:</span>
+                      <span className="text-on-surface">{formatDateTime(selectedEvidence.created_at)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Description */}
-              <div className="mt-6">
-                <h4 className="font-medium text-on-surface mb-2">Description</h4>
-                <p className="text-on-surface-variant text-sm">
-                  {selectedEvidence.description}
-                </p>
               </div>
               
               {/* Actions */}
               <div className="flex space-x-3 mt-6 pt-6 border-t border-outline">
                 <button
                   onClick={() => handleDownload(selectedEvidence)}
-                  className="btn-primary flex items-center space-x-2"
+                  disabled={!selectedEvidence.video_file}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+                    selectedEvidence.video_file
+                      ? 'btn-primary'
+                      : 'bg-surface-variant/50 text-on-surface-variant cursor-not-allowed'
+                  }`}
                 >
                   <Download className="h-4 w-4" />
                   <span>Download Evidence</span>
                 </button>
                 
-                <button className="bg-surface-variant text-on-surface px-4 py-2 rounded-lg hover:bg-surface transition-colors flex items-center space-x-2">
-                  <FileText className="h-4 w-4" />
-                  <span>Generate Report</span>
+                <button 
+                  onClick={() => {
+                    setShowVideoModal(false)
+                    setSelectedEvidence(selectedEvidence)
+                    setShowDeleteModal(true)
+                  }}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center space-x-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete Evidence</span>
                 </button>
-                
-                {selectedEvidence.status !== 'verified' && (
-                  <button
-                    onClick={() => handleStatusUpdate(selectedEvidence.id, 'verified')}
-                    className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center space-x-2"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Verify</span>
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -648,6 +746,189 @@ const Evidence = () => {
               >
                 Delete Evidence
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Evidence Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-surface rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-outline">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-on-surface">
+                  Upload New Evidence
+                </h3>
+                <button
+                  onClick={() => setShowUploadModal(false)}
+                  className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-6">
+                {/* Video File Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-on-surface mb-3">
+                    Video File *
+                  </label>
+                  <div className="border-2 border-dashed border-outline rounded-lg p-6 text-center">
+                    {videoFile ? (
+                      <div className="text-center">
+                        <Video className="h-12 w-12 text-primary mx-auto mb-2" />
+                        <p className="text-on-surface font-medium">{videoFile.name}</p>
+                        <p className="text-on-surface-variant text-sm">
+                          {getFileSizeDisplay(videoFile.size)} • {getDurationDisplay(newEvidence.duration_seconds)}
+                        </p>
+                        <button
+                          onClick={() => setVideoFile(null)}
+                          className="text-red-500 text-sm mt-2"
+                        >
+                          Remove File
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="h-12 w-12 text-on-surface-variant mx-auto mb-3" />
+                        <p className="text-on-surface font-medium mb-1">Select video file</p>
+                        <p className="text-on-surface-variant text-sm mb-4">
+                          MP4, MOV, AVI, MKV, or WebM • Max 100MB
+                        </p>
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          id="video-upload"
+                        />
+                        <label
+                          htmlFor="video-upload"
+                          className="btn-primary cursor-pointer inline-flex items-center space-x-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Select File</span>
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Evidence Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">
+                      Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={newEvidence.title}
+                      onChange={(e) => setNewEvidence(prev => ({...prev, title: e.target.value}))}
+                      className="input-field w-full"
+                      placeholder="Evidence title"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">
+                      Recorded Date & Time *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={newEvidence.recorded_at}
+                      onChange={(e) => setNewEvidence(prev => ({...prev, recorded_at: e.target.value}))}
+                      className="input-field w-full"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-on-surface mb-2">
+                      Location Address
+                    </label>
+                    <input
+                      type="text"
+                      value={newEvidence.location_address}
+                      onChange={(e) => setNewEvidence(prev => ({...prev, location_address: e.target.value}))}
+                      className="input-field w-full"
+                      placeholder="Enter location address"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">
+                      Latitude
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={newEvidence.location_lat}
+                      onChange={(e) => setNewEvidence(prev => ({...prev, location_lat: e.target.value}))}
+                      className="input-field w-full"
+                      placeholder="23.8103"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">
+                      Longitude
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={newEvidence.location_lng}
+                      onChange={(e) => setNewEvidence(prev => ({...prev, location_lng: e.target.value}))}
+                      className="input-field w-full"
+                      placeholder="90.4125"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={newEvidence.is_anonymous}
+                        onChange={(e) => setNewEvidence(prev => ({...prev, is_anonymous: e.target.checked}))}
+                        className="rounded border-outline text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-on-surface">Submit anonymously</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex space-x-3 pt-6 border-t border-outline">
+                  <button
+                    onClick={() => setShowUploadModal(false)}
+                    className="flex-1 bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitEvidence}
+                    disabled={!videoFile || uploading}
+                    className={`flex-1 py-2 rounded-lg flex items-center justify-center space-x-2 ${
+                      !videoFile || uploading
+                        ? 'bg-primary/50 text-white cursor-not-allowed'
+                        : 'btn-primary'
+                    }`}
+                  >
+                    {uploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        <span>Submit Evidence</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

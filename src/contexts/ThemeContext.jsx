@@ -1,25 +1,17 @@
 // src/contexts/ThemeContext.jsx
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 
 const ThemeContext = createContext()
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(false)
-
-  useEffect(() => {
-    // Check system preference or saved theme
+  // Initialize state from localStorage or system preference
+  const [isDark, setIsDark] = useState(() => {
     const savedTheme = localStorage.getItem('shield-theme')
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    
-    if (savedTheme) {
-      setIsDark(savedTheme === 'dark')
-    } else {
-      setIsDark(systemPrefersDark)
-    }
-  }, [])
+    if (savedTheme) return savedTheme === 'dark'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
 
   useEffect(() => {
-    // Apply theme to document
     if (isDark) {
       document.documentElement.classList.add('dark')
       localStorage.setItem('shield-theme', 'dark')
@@ -29,9 +21,7 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [isDark])
 
-  const toggleTheme = () => {
-    setIsDark(!isDark)
-  }
+  const toggleTheme = () => setIsDark(prev => !prev)
 
   return (
     <ThemeContext.Provider value={{ isDark, toggleTheme }}>
