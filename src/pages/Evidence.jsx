@@ -1,5 +1,5 @@
 // src/pages/Evidence.jsx
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { 
   Video,
   Play,
@@ -8,10 +8,8 @@ import {
   Calendar,
   User,
   Eye,
-  EyeOff,
   Filter,
   Search,
-  MoreVertical,
   Clock,
   FileText,
   Trash2,
@@ -19,8 +17,12 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Plus,
-  Upload
+  Upload,
+  Edit,
+  Save,
+  Pause,
+  Volume2,
+  VolumeX
 } from 'lucide-react'
 import api from '../services/api'
 
@@ -32,16 +34,25 @@ const Evidence = () => {
   const [showVideoModal, setShowVideoModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [evidenceList, setEvidenceList] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [videoPlaying, setVideoPlaying] = useState(false)
+  const [videoMuted, setVideoMuted] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(0)
+  const [videoDuration, setVideoDuration] = useState(0)
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0)
+  const videoRef = useRef(null)
+
   const [stats, setStats] = useState({
-    total: 0,
-    verified: 0,
-    pending: 0,
-    under_review: 0,
+    total_videos: 0,
     total_duration_seconds: 0,
-    total_file_size: 0
+    total_file_size: 0,
+    recent_count: 0,
+    status_statistics: {},
+    type_statistics: {}
   })
 
   // Form state for new evidence
@@ -52,15 +63,47 @@ const Evidence = () => {
     location_address: '',
     recorded_at: new Date().toISOString().slice(0, 16),
     is_anonymous: false,
-    duration_seconds: 0
+    duration_seconds: 0,
+    type: 'unknown'
   })
+
+  // Edit form state for status and type only
+  const [editForm, setEditForm] = useState({
+    status: '',
+    type: ''
+  })
+
   const [videoFile, setVideoFile] = useState(null)
+  const [videoPreview, setVideoPreview] = useState(null)
 
   // Fetch evidence data
   useEffect(() => {
     fetchEvidence()
     fetchStatistics()
   }, [])
+
+  // Video controls
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const updateProgress = () => {
+      setVideoCurrentTime(video.currentTime)
+      setVideoProgress((video.currentTime / video.duration) * 100)
+    }
+
+    const handleLoadedMetadata = () => {
+      setVideoDuration(video.duration)
+    }
+
+    video.addEventListener('timeupdate', updateProgress)
+    video.addEventListener('loadedmetadata', handleLoadedMetadata)
+
+    return () => {
+      video.removeEventListener('timeupdate', updateProgress)
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata)
+    }
+  }, [showVideoModal, selectedEvidence])
 
   const fetchEvidence = async () => {
     try {
@@ -95,12 +138,12 @@ const Evidence = () => {
   }
 
   const getTypeColor = (type) => {
-    // Map evidence types based on your data structure
     const typeMap = {
       harassment: 'text-purple-500 bg-purple-500/10',
       stalking: 'text-orange-500 bg-orange-500/10',
       robbery: 'text-red-500 bg-red-500/10',
-      assault: 'text-pink-500 bg-pink-500/10'
+      assault: 'text-pink-500 bg-pink-500/10',
+      unknown: 'text-gray-500 bg-gray-500/10'
     }
     return typeMap[type] || 'text-gray-500 bg-gray-500/10'
   }
@@ -143,6 +186,12 @@ const Evidence = () => {
     }
   }
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   const formatDateTime = (dateString) => {
     return new Date(dateString).toLocaleString('en-US', {
       year: 'numeric',
@@ -155,7 +204,6 @@ const Evidence = () => {
 
   const filteredEvidence = evidenceList.filter(evidence => {
     const matchesSearch = evidence.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (evidence.description && evidence.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
                          evidence.location_address.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || evidence.status === statusFilter
     const matchesType = typeFilter === 'all' || evidence.type === typeFilter
@@ -166,7 +214,6 @@ const Evidence = () => {
   const handleDownload = async (evidence) => {
     try {
       if (evidence.video_file) {
-        // Create a temporary link to download the file
         const link = document.createElement('a')
         link.href = evidence.video_file
         link.download = evidence.title + '.mp4'
@@ -188,7 +235,7 @@ const Evidence = () => {
       setEvidenceList(evidenceList.filter(evidence => evidence.id !== evidenceId))
       fetchStatistics()
       setShowDeleteModal(false)
-      alert('Evidence deleted successfully')
+      // alert('Evidence deleted successfully')
     } catch (error) {
       console.error('Error deleting evidence:', error)
       alert('Failed to delete evidence')
@@ -199,17 +246,17 @@ const Evidence = () => {
     try {
       setUploading(true)
       
-      // First create the evidence record
+      // Create the evidence record
       const evidenceResponse = await api.post('/aegis/evidence/submit/', newEvidence)
       const evidenceId = evidenceResponse.data.evidence_id
       
-      // Then upload the video file if provided
+      // Upload the video file if provided
       if (videoFile) {
         const formData = new FormData()
         formData.append('video_file', videoFile)
         formData.append('media_type', 'video')
         
-        await api.post(`/evidence/${evidenceId}/upload/`, formData, {
+        await api.post(`/aegis/evidence/${evidenceId}/upload/`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -228,11 +275,13 @@ const Evidence = () => {
         location_address: '',
         recorded_at: new Date().toISOString().slice(0, 16),
         is_anonymous: false,
-        duration_seconds: 0
+        duration_seconds: 0,
+        type: 'unknown'
       })
       setVideoFile(null)
+      setVideoPreview(null)
       
-      alert('Evidence submitted successfully')
+      // alert('Evidence submitted successfully')
     } catch (error) {
       console.error('Error submitting evidence:', error)
       alert('Failed to submit evidence: ' + (error.response?.data?.error || error.message))
@@ -241,16 +290,53 @@ const Evidence = () => {
     }
   }
 
+  const handleUpdateStatusType = async () => {
+    try {
+      setUpdating(true)
+      
+      // Update status and type using the status endpoint for controllers
+      if (editForm.status && editForm.status !== selectedEvidence.status) {
+        await api.patch(`/aegis/evidence/${selectedEvidence.id}/status/`, {
+          status: editForm.status
+        })
+      }
+      
+      // Update type using the regular update endpoint
+      if (editForm.type && editForm.type !== selectedEvidence.type) {
+        await api.put(`/aegis/evidence/${selectedEvidence.id}/update/`, {
+          type: editForm.type
+        })
+      }
+      
+      // Refresh evidence list
+      await fetchEvidence()
+      setShowEditModal(false)
+      // alert('Evidence updated successfully')
+    } catch (error) {
+      console.error('Error updating evidence:', error)
+      alert('Failed to update evidence: ' + (error.response?.data?.error || error.message))
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const openEditModal = (evidence) => {
+    setSelectedEvidence(evidence)
+    setEditForm({
+      status: evidence.status,
+      type: evidence.type
+    })
+    setShowEditModal(true)
+  }
+
   const handleFileSelect = (event) => {
     const file = event.target.files[0]
     if (file) {
-      // Validate file size (100MB max)
       if (file.size > 100 * 1024 * 1024) {
         alert('File size cannot exceed 100MB')
         return
       }
       
-      // Validate file type
       const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm']
       if (!allowedTypes.includes(file.type)) {
         alert('Please select a valid video file (MP4, MOV, AVI, MKV, or WebM)')
@@ -258,6 +344,10 @@ const Evidence = () => {
       }
       
       setVideoFile(file)
+
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file)
+      setVideoPreview(previewUrl)
 
       const video = document.createElement('video')
       video.preload = 'metadata'
@@ -272,6 +362,51 @@ const Evidence = () => {
       
       video.src = URL.createObjectURL(file)
     }
+  }
+
+  const handlePlayPause = () => {
+    const video = videoRef.current
+    if (video) {
+      if (videoPlaying) {
+        video.pause()
+      } else {
+        video.play()
+      }
+      setVideoPlaying(!videoPlaying)
+    }
+  }
+
+  const handleSeek = (e) => {
+    const video = videoRef.current
+    const rect = e.currentTarget.getBoundingClientRect()
+    const percent = (e.clientX - rect.left) / rect.width
+    if (video) {
+      video.currentTime = percent * video.duration
+    }
+  }
+
+  const handleVolumeToggle = () => {
+    const video = videoRef.current
+    if (video) {
+      video.muted = !video.muted
+      setVideoMuted(!videoMuted)
+    }
+  }
+
+  const handleVideoEnd = () => {
+    setVideoPlaying(false)
+    setVideoProgress(0)
+    setVideoCurrentTime(0)
+  }
+
+  const getVideoUrl = (videoFile) => {
+    if (!videoFile) return null
+    // Check if it's already a full URL
+    if (videoFile.startsWith('http')) {
+      return videoFile
+    }
+    // Construct the full URL
+    return `${process.env.REACT_APP_API_URL || ''}${videoFile}`
   }
 
   if (loading) {
@@ -303,10 +438,6 @@ const Evidence = () => {
             <Upload className="h-4 w-4" />
             <span>Upload Evidence</span>
           </button>
-          <button className="btn-secondary flex items-center space-x-2">
-            <FileText className="h-4 w-4" />
-            <span>Generate Report</span>
-          </button>
         </div>
       </div>
 
@@ -325,34 +456,36 @@ const Evidence = () => {
         <div className="card p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-on-surface-variant">Total Duration</p>
-              <p className="text-2xl font-bold text-blue-500 mt-1">
-                {stats.total_duration_display || '0h 0m'}
+              <p className="text-sm font-medium text-on-surface-variant">Verified</p>
+              <p className="text-2xl font-bold text-green-500 mt-1">
+                {stats.status_statistics?.verified || 0}
               </p>
-            </div>
-            <Clock className="h-8 w-8 text-blue-500" />
-          </div>
-        </div>
-        
-        <div className="card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-on-surface-variant">Total Storage</p>
-              <p className="text-2xl font-bold text-purple-500 mt-1">
-                {stats.total_file_size_display || '0 GB'}
-              </p>
-            </div>
-            <FileText className="h-8 w-8 text-purple-500" />
-          </div>
-        </div>
-        
-        <div className="card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-on-surface-variant">Recent (7d)</p>
-              <p className="text-2xl font-bold text-green-500 mt-1">{stats.recent_count || 0}</p>
             </div>
             <CheckCircle className="h-8 w-8 text-green-500" />
+          </div>
+        </div>
+        
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-on-surface-variant">Pending</p>
+              <p className="text-2xl font-bold text-yellow-500 mt-1">
+                {stats.status_statistics?.pending || 0}
+              </p>
+            </div>
+            <Clock className="h-8 w-8 text-yellow-500" />
+          </div>
+        </div>
+        
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-on-surface-variant">Under Review</p>
+              <p className="text-2xl font-bold text-blue-500 mt-1">
+                {stats.status_statistics?.under_review || 0}
+              </p>
+            </div>
+            <Eye className="h-8 w-8 text-blue-500" />
           </div>
         </div>
       </div>
@@ -365,7 +498,7 @@ const Evidence = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant h-4 w-4" />
               <input
                 type="text"
-                placeholder="Search evidence by title, description, or location..."
+                placeholder="Search evidence by title or location..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="input-field w-full pl-10 pr-4"
@@ -396,12 +529,8 @@ const Evidence = () => {
               <option value="stalking">Stalking</option>
               <option value="robbery">Robbery</option>
               <option value="assault">Assault</option>
+              <option value="unknown">Unknown</option>
             </select>
-            
-            <button className="btn-primary flex items-center space-x-2">
-              <Filter className="h-4 w-4" />
-              <span>Filter</span>
-            </button>
           </div>
         </div>
       </div>
@@ -425,8 +554,12 @@ const Evidence = () => {
                   </p>
                 </div>
               </div>
-              <button className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors">
-                <MoreVertical className="h-4 w-4" />
+              <button 
+                onClick={() => openEditModal(evidence)}
+                className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+                title="Edit Status & Type"
+              >
+                <Edit className="h-4 w-4" />
               </button>
             </div>
 
@@ -436,19 +569,10 @@ const Evidence = () => {
                 {getStatusIcon(evidence.status)}
                 <span className="capitalize">{evidence.status?.replace('_', ' ') || 'unknown'}</span>
               </span>
-              {evidence.type && (
-                <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getTypeColor(evidence.type)}`}>
-                  {evidence.type}
-                </span>
-              )}
+              <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getTypeColor(evidence.type)}`}>
+                {evidence.type}
+              </span>
             </div>
-
-            {/* Description */}
-            {evidence.description && (
-              <p className="text-sm text-on-surface-variant mb-4 line-clamp-2">
-                {evidence.description}
-              </p>
-            )}
 
             {/* Video Preview */}
             <div 
@@ -460,6 +584,12 @@ const Evidence = () => {
             >
               {evidence.video_file ? (
                 <>
+                  <video
+                    className="w-full h-full object-cover"
+                    src={getVideoUrl(evidence.video_file)}
+                    muted
+                    playsInline
+                  />
                   <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                     <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                       <Play className="h-6 w-6 text-gray-900 ml-1" />
@@ -501,30 +631,8 @@ const Evidence = () => {
                     <Shield className="h-3 w-3 text-green-500" />
                   )}
                 </div>
-                
-                {evidence.related_emergency && (
-                  <span className="text-primary font-medium">
-                    {evidence.related_emergency}
-                  </span>
-                )}
               </div>
             </div>
-
-            {/* Tags */}
-            {evidence.tags && evidence.tags.length > 0 && (
-              <div className="mb-4">
-                <div className="flex flex-wrap gap-1">
-                  {evidence.tags.map((tag, index) => (
-                    <span 
-                      key={index}
-                      className="px-2 py-1 bg-surface-variant text-on-surface text-xs rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Actions */}
             <div className="flex items-center space-x-2">
@@ -592,100 +700,194 @@ const Evidence = () => {
       {/* Video Player Modal */}
       {showVideoModal && selectedEvidence && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-outline">
-              <div className="flex items-center justify-between">
+          <div className="bg-surface rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-outline flex items-center justify-between">
+              <div>
                 <h3 className="text-xl font-semibold text-on-surface">
                   {selectedEvidence.title}
                 </h3>
-                <button
-                  onClick={() => setShowVideoModal(false)}
-                  className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
-                >
-                  <XCircle className="h-5 w-5" />
-                </button>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  Evidence ID: #{selectedEvidence.id}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowVideoModal(false)
+                  setVideoPlaying(false)
+                  setVideoProgress(0)
+                  setVideoCurrentTime(0)
+                }}
+                className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6">
+                {/* Video Player */}
+                <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6 relative group">
+                  {selectedEvidence.video_file ? (
+                    <>
+                      <video
+                        ref={videoRef}
+                        className="w-full h-full rounded-lg"
+                        onEnded={handleVideoEnd}
+                        onPlay={() => setVideoPlaying(true)}
+                        onPause={() => setVideoPlaying(false)}
+                      >
+                        <source src={getVideoUrl(selectedEvidence.video_file)} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                      
+                      {/* Custom Video Controls */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Progress Bar */}
+                        <div 
+                          className="w-full h-2 bg-white/30 rounded-full mb-3 cursor-pointer"
+                          onClick={handleSeek}
+                        >
+                          <div 
+                            className="h-full bg-blue-500 rounded-full transition-all"
+                            style={{ width: `${videoProgress}%` }}
+                          />
+                        </div>
+                        
+                        {/* Controls */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <button
+                              onClick={handlePlayPause}
+                              className="text-white hover:text-blue-300 transition-colors"
+                            >
+                              {videoPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                            </button>
+                            
+                            <button
+                              onClick={handleVolumeToggle}
+                              className="text-white hover:text-blue-300 transition-colors"
+                            >
+                              {videoMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                            </button>
+                            
+                            <span className="text-white text-sm">
+                              {formatTime(videoCurrentTime)} / {formatTime(videoDuration)}
+                            </span>
+                          </div>
+                          
+                          <span className="text-white text-sm">
+                            {getDurationDisplay(selectedEvidence.duration_seconds)}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Play/Pause overlay */}
+                      {!videoPlaying && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <button
+                            onClick={handlePlayPause}
+                            className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
+                          >
+                            <Play className="h-8 w-8 text-gray-900 ml-1" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center text-white/70">
+                      <Video className="h-16 w-16 mx-auto mb-4" />
+                      <p>No video file available</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Evidence Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-on-surface mb-3">Evidence Information</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-on-surface-variant">Status:</span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(selectedEvidence.status)}`}>
+                            {getStatusIcon(selectedEvidence.status)}
+                            <span className="capitalize">{selectedEvidence.status?.replace('_', ' ')}</span>
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-on-surface-variant">Type:</span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getTypeColor(selectedEvidence.type)}`}>
+                            {selectedEvidence.type}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-on-surface-variant">Duration:</span>
+                          <span className="text-on-surface font-medium">{getDurationDisplay(selectedEvidence.duration_seconds)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-on-surface-variant">File Size:</span>
+                          <span className="text-on-surface font-medium">{getFileSizeDisplay(selectedEvidence.file_size)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium text-on-surface mb-3">Location & Timing</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-on-surface-variant">Location:</span>
+                          <span className="text-on-surface text-right max-w-[200px] truncate" title={selectedEvidence.location_address}>
+                            {selectedEvidence.location_address || 'Not specified'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-on-surface-variant">Recorded:</span>
+                          <span className="text-on-surface">{formatDateTime(selectedEvidence.recorded_at)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-on-surface-variant">Uploaded:</span>
+                          <span className="text-on-surface">{formatDateTime(selectedEvidence.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium text-on-surface mb-3">User Information</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-on-surface-variant">Submitted by:</span>
+                          <span className="text-on-surface">
+                            {selectedEvidence.is_anonymous ? 'Anonymous' : selectedEvidence.user_email}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-on-surface-variant">Anonymity:</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedEvidence.is_anonymous 
+                              ? 'text-green-500 bg-green-500/10' 
+                              : 'text-gray-500 bg-gray-500/10'
+                          }`}>
+                            {selectedEvidence.is_anonymous ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             
-            <div className="p-6">
-              {/* Video Player */}
-              <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-6">
-                {selectedEvidence.video_file ? (
-                  <video 
-                    controls 
-                    className="w-full h-full rounded-lg"
-                    poster={selectedEvidence.thumbnail}
-                  >
-                    {/* <source src={selectedEvidence.video_file} type="video/mp4" /> */} 
-                    <source src={`${process.env.REACT_APP_MEDIA_URL}${selectedEvidence.video_file}`} type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
-                ) : (
-                  <div className="text-center text-white/70">
-                    <Video className="h-16 w-16 mx-auto mb-4" />
-                    <p>No video file available</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Evidence Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-on-surface mb-3">Evidence Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Evidence ID:</span>
-                      <span className="text-on-surface font-medium">#{selectedEvidence.id}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Duration:</span>
-                      <span className="text-on-surface">{getDurationDisplay(selectedEvidence.duration_seconds)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">File Size:</span>
-                      <span className="text-on-surface">{getFileSizeDisplay(selectedEvidence.file_size)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Recorded:</span>
-                      <span className="text-on-surface">{formatDateTime(selectedEvidence.recorded_at)}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-on-surface mb-3">Location & User</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Location: </span>
-                      <span className="text-on-surface text-right">{selectedEvidence.location_address || 'Not specified'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">User:</span>
-                      <span className="text-on-surface">
-                        {selectedEvidence.is_anonymous ? 'Anonymous' : selectedEvidence.user_email}
-                        
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Anonymity:</span>
-                      <span className="text-on-surface">
-                        {selectedEvidence.is_anonymous ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Uploaded:</span>
-                      <span className="text-on-surface">{formatDateTime(selectedEvidence.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Actions */}
-              <div className="flex space-x-3 mt-6 pt-6 border-t border-outline">
+            {/* Actions */}
+            <div className="p-6 border-t border-outline bg-surface-variant/50">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => handleDownload(selectedEvidence)}
                   disabled={!selectedEvidence.video_file}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+                  className={`flex-1 py-3 px-4 rounded-lg flex items-center justify-center space-x-2 ${
                     selectedEvidence.video_file
                       ? 'btn-primary'
                       : 'bg-surface-variant/50 text-on-surface-variant cursor-not-allowed'
@@ -698,10 +900,21 @@ const Evidence = () => {
                 <button 
                   onClick={() => {
                     setShowVideoModal(false)
+                    openEditModal(selectedEvidence)
+                  }}
+                  className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  <span>Edit Status & Type</span>
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    setShowVideoModal(false)
                     setSelectedEvidence(selectedEvidence)
                     setShowDeleteModal(true)
                   }}
-                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center space-x-2"
+                  className="flex-1 bg-red-500 text-white py-3 px-4 rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center space-x-2"
                 >
                   <Trash2 className="h-4 w-4" />
                   <span>Delete Evidence</span>
@@ -751,6 +964,90 @@ const Evidence = () => {
         </div>
       )}
 
+      {/* Edit Status & Type Modal */}
+      {showEditModal && selectedEvidence && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-surface rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                <Edit className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-on-surface">Update Evidence</h3>
+                <p className="text-on-surface-variant text-sm">
+                  Update status and type for: {selectedEvidence.title}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-on-surface mb-2">
+                  Status
+                </label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm(prev => ({...prev, status: e.target.value}))}
+                  className="input-field w-full"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="verified">Verified</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-on-surface mb-2">
+                  Evidence Type
+                </label>
+                <select
+                  value={editForm.type}
+                  onChange={(e) => setEditForm(prev => ({...prev, type: e.target.value}))}
+                  className="input-field w-full"
+                >
+                  <option value="unknown">Unknown</option>
+                  <option value="harassment">Harassment</option>
+                  <option value="stalking">Stalking</option>
+                  <option value="robbery">Robbery</option>
+                  <option value="assault">Assault</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="flex-1 bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateStatusType}
+                disabled={updating}
+                className={`flex-1 py-2 rounded-lg flex items-center justify-center space-x-2 ${
+                  updating
+                    ? 'bg-blue-500/50 text-white cursor-not-allowed'
+                    : 'btn-primary'
+                }`}
+              >
+                {updating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Updating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    <span>Update</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Upload Evidence Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -761,7 +1058,10 @@ const Evidence = () => {
                   Upload New Evidence
                 </h3>
                 <button
-                  onClick={() => setShowUploadModal(false)}
+                  onClick={() => {
+                    setShowUploadModal(false)
+                    setVideoPreview(null)
+                  }}
                   className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
                 >
                   <XCircle className="h-5 w-5" />
@@ -776,17 +1076,27 @@ const Evidence = () => {
                   <label className="block text-sm font-medium text-on-surface mb-3">
                     Video File *
                   </label>
-                  <div className="border-2 border-dashed border-outline rounded-lg p-6 text-center">
+                  <div className="border-2 border-dashed border-outline rounded-lg p-8 text-center hover:border-primary transition-colors">
                     {videoFile ? (
                       <div className="text-center">
-                        <Video className="h-12 w-12 text-primary mx-auto mb-2" />
+                        <div className="bg-black rounded-lg aspect-video mb-4 relative">
+                          <video
+                            className="w-full h-full rounded-lg"
+                            src={videoPreview}
+                            controls
+                            muted
+                          />
+                        </div>
                         <p className="text-on-surface font-medium">{videoFile.name}</p>
                         <p className="text-on-surface-variant text-sm">
                           {getFileSizeDisplay(videoFile.size)} • {getDurationDisplay(newEvidence.duration_seconds)}
                         </p>
                         <button
-                          onClick={() => setVideoFile(null)}
-                          className="text-red-500 text-sm mt-2"
+                          onClick={() => {
+                            setVideoFile(null)
+                            setVideoPreview(null)
+                          }}
+                          className="text-red-500 text-sm mt-2 hover:text-red-600"
                         >
                           Remove File
                         </button>
@@ -809,7 +1119,7 @@ const Evidence = () => {
                           htmlFor="video-upload"
                           className="btn-primary cursor-pointer inline-flex items-center space-x-2"
                         >
-                          <Plus className="h-4 w-4" />
+                          <Upload className="h-4 w-4" />
                           <span>Select File</span>
                         </label>
                       </>
@@ -819,7 +1129,7 @@ const Evidence = () => {
 
                 {/* Evidence Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-on-surface mb-2">
                       Title *
                     </label>
@@ -830,6 +1140,23 @@ const Evidence = () => {
                       className="input-field w-full"
                       placeholder="Evidence title"
                     />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">
+                      Evidence Type
+                    </label>
+                    <select
+                      value={newEvidence.type}
+                      onChange={(e) => setNewEvidence(prev => ({...prev, type: e.target.value}))}
+                      className="input-field w-full"
+                    >
+                      <option value="unknown">Unknown</option>
+                      <option value="harassment">Harassment</option>
+                      <option value="stalking">Stalking</option>
+                      <option value="robbery">Robbery</option>
+                      <option value="assault">Assault</option>
+                    </select>
                   </div>
                   
                   <div>
@@ -901,7 +1228,10 @@ const Evidence = () => {
                 {/* Actions */}
                 <div className="flex space-x-3 pt-6 border-t border-outline">
                   <button
-                    onClick={() => setShowUploadModal(false)}
+                    onClick={() => {
+                      setShowUploadModal(false)
+                      setVideoPreview(null)
+                    }}
                     className="flex-1 bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors"
                   >
                     Cancel
