@@ -18,13 +18,13 @@ import {
   BookPlus,
 } from 'lucide-react'
 
-import { useEmergencies } from '../../contexts/EmergencyContext'
+import api from '../../services/api'
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [activeEmergencyCount, setActiveEmergencyCount] = useState(0)
   const location = useLocation()
-  const { emergencies } = useEmergencies()
 
   // Detect mobile screen
   useEffect(() => {
@@ -40,9 +40,28 @@ const Sidebar = () => {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  const activeEmergencies = emergencies.filter(e => 
-    e.status === 'active' || e.status === 'assigned'
-  ).length
+  // Fetch active emergencies count every 10 seconds
+  useEffect(() => {
+    const fetchActiveEmergencies = async () => {
+      try {
+        const response = await api.get('/aegis/emergency/active/')
+        if (response.data.success) {
+          setActiveEmergencyCount(response.data.count)
+        }
+      } catch (error) {
+        console.error('Error fetching active emergencies:', error)
+        setActiveEmergencyCount(0)
+      }
+    }
+
+    // Fetch immediately on component mount
+    fetchActiveEmergencies()
+
+    // Set up polling every 10 seconds
+    const interval = setInterval(fetchActiveEmergencies, 10000) // 10 seconds
+
+    return () => clearInterval(interval)
+  }, [])
 
   const navigation = [
     {
@@ -57,7 +76,7 @@ const Sidebar = () => {
       href: '/emergencies',
       icon: AlertTriangle,
       current: location.pathname === '/emergencies',
-      badge: activeEmergencies
+      badge: activeEmergencyCount > 0 ? activeEmergencyCount : null
     },
     {
       name: 'Responders',
@@ -88,18 +107,18 @@ const Sidebar = () => {
       badge: null
     },
     {
-        name: 'Evidence',
-        href: '/evidence',
-        icon: ListVideo,
-        current: location.pathname === '/evidence',
-        badge: null
+      name: 'Evidence',
+      href: '/evidence',
+      icon: ListVideo,
+      current: location.pathname === '/evidence',
+      badge: null
     },
     {
-        name: 'Resources',
-        href: '/resources',
-        icon: BookPlus,
-        current: location.pathname === '/resources',
-        badge: null
+      name: 'Resources',
+      href: '/resources',
+      icon: BookPlus,
+      current: location.pathname === '/resources',
+      badge: null
     },
     {
       name: 'Settings',
@@ -244,6 +263,12 @@ const Sidebar = () => {
                 <span className="text-success/70">Response Time</span>
                 <span className="font-medium text-success">{"<2s"}</span>
               </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-success/70">Active Emergencies</span>
+                <span className={`font-medium ${activeEmergencyCount > 0 ? 'text-warning' : 'text-success'}`}>
+                  {activeEmergencyCount}
+                </span>
+              </div>
             </div>
 
             <div className="w-full bg-success/20 rounded-full h-1.5">
@@ -261,6 +286,11 @@ const Sidebar = () => {
             <div className="flex flex-col items-center space-y-2">
               <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
               <Radio className="h-4 w-4 text-success" />
+              {activeEmergencyCount > 0 && (
+                <div className="absolute -top-1 -right-1 bg-panic text-on-panic text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
+                  {activeEmergencyCount}
+                </div>
+              )}
             </div>
           </div>
         )}

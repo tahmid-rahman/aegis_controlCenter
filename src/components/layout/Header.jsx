@@ -1,17 +1,17 @@
 // src/components/layout/Header.jsx
 import React, { useState, useEffect } from 'react'
 import { Bell, Search, User, LogOut, Settings, Moon, Sun, Monitor, Router } from 'lucide-react'
-import { useEmergencies } from '../../contexts/EmergencyContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../../contexts/AuthContext'
+import api from '../../services/api'
 
 const Header = () => {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showThemeMenu, setShowThemeMenu] = useState(false)
-  const { emergencies } = useEmergencies()
+  const [activeEmergencyCount, setActiveEmergencyCount] = useState(0)
   const { isDark, toggleTheme } = useTheme()
   const navigate = useNavigate();
   const { logout } = useAuth()
@@ -23,14 +23,33 @@ const Header = () => {
     return () => clearInterval(timer)
   }, [])
 
+  // Fetch active emergencies count every 10 seconds
+  useEffect(() => {
+    const fetchActiveEmergencies = async () => {
+      try {
+        const response = await api.get('/aegis/emergency/active/')
+        if (response.data.success) {
+          setActiveEmergencyCount(response.data.count)
+        }
+      } catch (error) {
+        console.error('Error fetching active emergencies:', error)
+        setActiveEmergencyCount(0)
+      }
+    }
+
+    // Fetch immediately on component mount
+    fetchActiveEmergencies()
+
+    // Set up polling every 10 seconds
+    const interval = setInterval(fetchActiveEmergencies, 10000) // 10 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
-
-  const activeEmergencies = emergencies.filter(e => 
-    e.status === 'active' || e.status === 'assigned'
-  ).length
 
   const recentNotifications = [
     {
@@ -91,11 +110,11 @@ const Header = () => {
           </div>
 
           {/* Emergency Alert Badge */}
-          {activeEmergencies > 0 && (
+          {activeEmergencyCount > 0 && (
             <div className="relative">
               <div className="w-3 h-3 bg-panic rounded-full animate-ping absolute -top-1 -right-1"></div>
               <div className="px-3 py-1 bg-panic/20 text-panic rounded-full text-sm font-medium">
-                {activeEmergencies} Active
+                {activeEmergencyCount} Active
               </div>
             </div>
           )}
@@ -174,6 +193,14 @@ const Header = () => {
               <div className="absolute right-0 mt-2 w-80 bg-surface rounded-lg shadow-lg border border-outline z-50">
                 <div className="p-4 border-b border-outline">
                   <h3 className="font-semibold text-on-surface">Notifications</h3>
+                  {activeEmergencyCount > 0 && (
+                    <div className="mt-2 px-3 py-2 bg-panic/10 border border-panic/20 rounded-md">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-panic">Active Emergencies</span>
+                        <span className="text-sm font-bold text-panic">{activeEmergencyCount}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="max-h-96 overflow-y-auto">
                   {recentNotifications.map(notification => (
