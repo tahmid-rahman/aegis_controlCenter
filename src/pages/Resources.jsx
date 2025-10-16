@@ -199,7 +199,7 @@ useEffect(() => {
         totalResources,
         publishedResources,
         totalQuizzes,
-        activeUsers: 1542
+        activeUsers: 4
       })
     } catch (error) {
       console.error('Error fetching data:', error)

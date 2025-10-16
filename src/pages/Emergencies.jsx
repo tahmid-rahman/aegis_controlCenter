@@ -27,7 +27,12 @@ import {
   Play,
   Pause,
   Volume2,
-  VolumeX
+  VolumeX,
+  FileBarChart,
+  ClipboardList,
+  AlertCircle,
+  UserCheck,
+  MapPinned
 } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
@@ -169,31 +174,57 @@ const formatResponseStatus = (status) => {
   return status ? status.replace('_', ' ').toUpperCase() : 'UNKNOWN'
 }
 
+// Report Status Colors
+const getReportStatusColor = (status) => {
+  switch (status) {
+    case 'draft': return 'text-gray-500 bg-gray-500/10'
+    case 'submitted': return 'text-blue-500 bg-blue-500/10'
+    case 'approved': return 'text-green-500 bg-green-500/10'
+    default: return 'text-gray-500 bg-gray-500/10'
+  }
+}
+
+const getIncidentTypeColor = (type) => {
+  switch (type) {
+    case 'harassment': return 'text-purple-500 bg-purple-500/10'
+    case 'robbery': return 'text-red-500 bg-red-500/10'
+    case 'stalking': return 'text-orange-500 bg-orange-500/10'
+    case 'assault': return 'text-red-600 bg-red-600/10'
+    case 'other': return 'text-gray-500 bg-gray-500/10'
+    default: return 'text-gray-500 bg-gray-500/10'
+  }
+}
+
+const getSeverityColor = (severity) => {
+  switch (severity) {
+    case 'critical': return 'text-red-600 bg-red-600/10'
+    case 'high': return 'text-red-500 bg-red-500/10'
+    case 'medium': return 'text-yellow-500 bg-yellow-500/10'
+    case 'low': return 'text-green-500 bg-green-500/10'
+    default: return 'text-gray-500 bg-gray-500/10'
+  }
+}
+
 // Fixed Media Player Component
 const MediaPlayer = ({ media }) => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [hasError, setHasError] = useState(false)
 
-  // Fixed getMediaUrl function
   const getMediaUrl = (mediaFile) => {
-    // If media file has a direct URL, use it
     if (mediaFile.file_url) {
       return mediaFile.file_url;
     }
     
-    // If media file has a file path/name and we have a base URL
     if (mediaFile.file && typeof mediaFile.file === 'string') {
       if (mediaFile.file.startsWith('http')) {
         return mediaFile.file;
       }
       
-      // Use environment variable for media base URL
       const baseUrl = process.env.REACT_APP_MEDIA_URL
       return `${baseUrl}${mediaFile.file}`;
     }
     
-    // Fallback to mock media for demonstration
     switch (mediaFile.media_type) {
       case 'photo':
         return 'https://images.unsplash.com/photo-1581094794321-8410e6a0d6d3?w=400&h=300&fit=crop'
@@ -359,7 +390,6 @@ const EnhancedMediaModal = ({ media, onClose }) => {
         
         <div className="p-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Media Player */}
             <div className="lg:col-span-2">
               {selectedMedia ? (
                 <MediaPlayer media={selectedMedia} />
@@ -373,7 +403,6 @@ const EnhancedMediaModal = ({ media, onClose }) => {
               )}
             </div>
             
-            {/* Media List */}
             <div className="space-y-3 max-h-96 overflow-y-auto">
               <h4 className="font-semibold text-on-surface">All Media</h4>
               {media.map(item => (
@@ -443,7 +472,6 @@ const EmergencyRespondersList = ({ responses, alertId }) => {
       <div className="space-y-3">
         {responses.map((response) => (
           <div key={response.response_id} className="bg-surface-variant rounded-lg p-4 border-l-4 border-blue-500">
-            {/* Responder Header */}
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center space-x-3">
                 <div className="text-2xl">
@@ -463,7 +491,6 @@ const EmergencyRespondersList = ({ responses, alertId }) => {
               </span>
             </div>
 
-            {/* Distance and ETA */}
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div className="text-sm">
                 <span className="text-on-surface-variant">Distance: </span>
@@ -479,7 +506,6 @@ const EmergencyRespondersList = ({ responses, alertId }) => {
               </div>
             </div>
 
-            {/* Contact Information */}
             <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
               {response.phone && (
                 <div>
@@ -495,7 +521,6 @@ const EmergencyRespondersList = ({ responses, alertId }) => {
               )}
             </div>
 
-            {/* Responder Stats */}
             <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
               <div className="text-center bg-surface rounded p-2">
                 <div className="font-medium text-on-surface">Rating</div>
@@ -517,7 +542,6 @@ const EmergencyRespondersList = ({ responses, alertId }) => {
               </div>
             </div>
 
-            {/* Response Timeline */}
             <div className="border-t border-outline pt-3">
               <h5 className="text-sm font-medium text-on-surface-variant mb-2">Response Timeline</h5>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
@@ -554,7 +578,6 @@ const EmergencyRespondersList = ({ responses, alertId }) => {
               </div>
             </div>
 
-            {/* Notes */}
             {response.notes && (
               <div className="mt-3 p-2 bg-surface rounded text-sm">
                 <span className="text-on-surface-variant">Notes: </span>
@@ -568,7 +591,978 @@ const EmergencyRespondersList = ({ responses, alertId }) => {
   )
 }
 
-// EmergencyMap Component with React-Leaflet - FIXED VERSION
+// NEW: Incident Reports List Component
+const IncidentReportsList = ({ reports, onReportSelect, onClose, loading }) => {
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-surface rounded-xl max-w-2xl w-full">
+          <div className="p-6 border-b border-outline">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-on-surface">Incident Reports</h3>
+              <button
+                onClick={onClose}
+                className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <h4 className="text-lg font-semibold text-on-surface mb-2">Loading Reports</h4>
+            <p className="text-on-surface-variant">Please wait while we load the incident reports...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!reports || reports.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-surface rounded-xl max-w-2xl w-full">
+          <div className="p-6 border-b border-outline">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-on-surface">Incident Reports</h3>
+              <button
+                onClick={onClose}
+                className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          <div className="p-8 text-center">
+            <FileBarChart className="h-16 w-16 text-on-surface-variant mx-auto mb-4" />
+            <h4 className="text-lg font-semibold text-on-surface mb-2">No Reports Available</h4>
+            <p className="text-on-surface-variant">No incident reports have been submitted for this emergency yet.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-surface rounded-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="p-6 border-b border-outline">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold text-on-surface">Incident Reports</h3>
+              <p className="text-on-surface-variant mt-1">{reports.length} reports found</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+            >
+              <XCircle className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <div className="space-y-4">
+            {reports.map((report) => (
+              <div
+                key={report.id}
+                className="bg-surface-variant rounded-lg p-4 border-l-4 border-blue-500 hover:bg-surface transition-colors cursor-pointer"
+                onClick={() => onReportSelect(report)}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="text-2xl">
+                      {getTypeIcon(report.incident_type)}
+                    </div>
+                    <div>
+                      <div className="font-medium text-on-surface">
+                        Report #{report.id}
+                      </div>
+                      <div className="text-sm text-on-surface-variant">
+                        Created by {report.agent_name} • {formatTimeAgo(report.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end space-y-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getReportStatusColor(report.status)}`}>
+                      {report.status.toUpperCase()}
+                    </span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(report.severity)}`}>
+                      {report.severity.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3 text-sm">
+                  <div>
+                    <span className="text-on-surface-variant">Type:</span>
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getIncidentTypeColor(report.incident_type)}`}>
+                      {report.incident_type}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-on-surface-variant">Location:</span>
+                    <span className="text-on-surface ml-2 truncate">{report.location}</span>
+                  </div>
+                  <div>
+                    <span className="text-on-surface-variant">Victim:</span>
+                    <span className="text-on-surface ml-2">
+                      {report.is_anonymous ? 'Anonymous' : `${report.victim_gender || 'Unknown'}, ${report.victim_age || 'N/A'}`}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-on-surface-variant">Condition:</span>
+                    <span className="text-on-surface ml-2 capitalize">{report.victim_condition}</span>
+                  </div>
+                </div>
+
+                {report.additional_notes && (
+                  <div className="text-sm">
+                    <span className="text-on-surface-variant">Notes: </span>
+                    <span className="text-on-surface">{report.additional_notes.substring(0, 100)}...</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-3 text-xs text-on-surface-variant">
+                  <div className="flex items-center space-x-4">
+                    {report.police_involved && (
+                      <span className="flex items-center space-x-1">
+                        <Shield className="h-3 w-3" />
+                        <span>Police</span>
+                      </span>
+                    )}
+                    {report.medical_assistance && (
+                      <span className="flex items-center space-x-1">
+                        <UserCheck className="h-3 w-3" />
+                        <span>Medical</span>
+                      </span>
+                    )}
+                    {report.ngo_involved && (
+                      <span className="flex items-center space-x-1">
+                        <Users className="h-3 w-3" />
+                        <span>NGO</span>
+                      </span>
+                    )}
+                    {report.evidence_collected && (
+                      <span className="flex items-center space-x-1">
+                        <Image className="h-3 w-3" />
+                        <span>Evidence</span>
+                      </span>
+                    )}
+                  </div>
+                  <button className="text-primary hover:text-primary-dark text-xs font-medium">
+                    View Full Report →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// NEW: Enhanced Detailed Report Modal Component
+const DetailedReportModal = ({ report, onClose, onApprove }) => {
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false)
+  const [approving, setApproving] = useState(false)
+  const [loadingReport, setLoadingReport] = useState(!report.evidence)
+  const [loadingEvidence, setLoadingEvidence] = useState(false)
+  const [fullReport, setFullReport] = useState(report)
+  const [evidence, setEvidence] = useState(report.evidence || [])
+  const [selectedEvidence, setSelectedEvidence] = useState(null)
+
+  // Fetch evidence for the report
+  const fetchEvidence = async (reportId) => {
+    try {
+      setLoadingEvidence(true)
+      const response = await api.get('/aegis/emergency-response/report-evidence/', {
+        params: { report_id: reportId }
+      })
+      
+      if (response.data.success) {
+        setEvidence(response.data.data || [])
+        return response.data.data || []
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching evidence:', error)
+      return []
+    } finally {
+      setLoadingEvidence(false)
+    }
+  }
+
+  // Fetch full report details if evidence is missing
+  useEffect(() => {
+    const fetchFullReport = async () => {
+      setLoadingReport(true)
+      try {
+        // Fetch report details
+        const reportResponse = await api.get(`/aegis/emergency-response/incident-reports/${report.id}/`)
+        if (reportResponse.data.success) {
+          const reportData = reportResponse.data.data
+          
+          // Fetch evidence separately
+          const evidenceData = await fetchEvidence(report.id)
+          
+          setFullReport({
+            ...reportData,
+            evidence: evidenceData
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching full report:', error)
+        // If detailed fetch fails, use the basic report and try to fetch evidence
+        const evidenceData = await fetchEvidence(report.id)
+        setFullReport({
+          ...report,
+          evidence: evidenceData
+        })
+      } finally {
+        setLoadingReport(false)
+      }
+    }
+
+    fetchFullReport()
+  }, [report])
+
+  const handleApprove = async () => {
+    try {
+      setApproving(true)
+      const response = await api.post(`/aegis/emergency-response/incident-reports/${report.id}/approve/`)
+      if (response.data.success) {
+        onApprove(response.data.data)
+        alert('Report approved successfully!')
+      }
+    } catch (error) {
+      console.error('Error approving report:', error)
+      alert('Failed to approve report')
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  const handleViewEvidence = (evidenceItem) => {
+    setSelectedEvidence([evidenceItem])
+    setShowEvidenceModal(true)
+  }
+
+  const handleViewAllEvidence = () => {
+    setSelectedEvidence(evidence)
+    setShowEvidenceModal(true)
+  }
+
+  const getVictimConditionText = (condition) => {
+    const conditions = {
+      'safe': 'Safe & Stable',
+      'injured': 'Minor Injuries', 
+      'serious': 'Serious Injuries',
+      'traumatized': 'Emotional Trauma',
+      'unknown': 'Condition Unknown'
+    }
+    return conditions[condition] || condition
+  }
+
+  const getIncidentTypeText = (type) => {
+    const types = {
+      'harassment': 'Harassment',
+      'robbery': 'Robbery',
+      'stalking': 'Stalking', 
+      'assault': 'Assault',
+      'other': 'Other'
+    }
+    return types[type] || type
+  }
+
+  const getSeverityText = (severity) => {
+    const severities = {
+      'critical': 'Critical',
+      'high': 'High',
+      'medium': 'Medium',
+      'low': 'Low'
+    }
+    return severities[severity] || severity
+  }
+
+  // Get agent name - handle both full_name and agent_name fields
+  // const getAgentName = () => {
+  //   console.log(fullReport.full_name)
+  //   if (fullReport.agent_name) return fullReport.agent_name
+  //   if (fullReport.agent && fullReport.agent.full_name) return fullReport.agent.full_name
+  //   if (fullReport.agent && typeof fullReport.agent === 'object') return fullReport.agent.full_name || 'Unknown Agent'
+  //   return 'Unknown Agent'
+  // }
+
+  // Loading state
+  if (loadingReport) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-surface rounded-xl max-w-md w-full">
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <h4 className="text-lg font-semibold text-on-surface mb-2">Loading Report Details</h4>
+            <p className="text-on-surface-variant">Please wait while we load the full report data...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-surface rounded-xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
+          <div className="p-6 border-b border-outline">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-on-surface">
+                  Incident Report #{fullReport.id}
+                </h3>
+                <p className="text-on-surface-variant mt-1">
+                  Created by {fullReport.user_type} • {formatTimeAgo(fullReport.created_at)}
+                  {fullReport.emergency_alert_id && ` • Emergency: ${fullReport.emergency_alert_id}`}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                {fullReport.status === 'submitted' && (
+                  <button
+                    onClick={handleApprove}
+                    disabled={approving}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span>{approving ? 'Approving...' : 'Approve Report'}</span>
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Left Column - Report Details */}
+              <div className="lg:col-span-3 space-y-6">
+                {/* Status and Basic Info */}
+                <div className="card p-4">
+                  <h4 className="font-semibold text-on-surface mb-4 flex items-center space-x-2">
+                    <ClipboardList className="h-4 w-4" />
+                    <span>Report Overview</span>
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant mb-1">Status</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getReportStatusColor(fullReport.status)}`}>
+                        {fullReport.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant mb-1">Severity</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(fullReport.severity)}`}>
+                        {getSeverityText(fullReport.severity).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant mb-1">Incident Type</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getIncidentTypeColor(fullReport.incident_type)}`}>
+                        {getIncidentTypeText(fullReport.incident_type)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant mb-1">Submitted</span>
+                      <span className="text-on-surface text-sm">
+                        {fullReport.submitted_at ? formatTimeAgo(fullReport.submitted_at) : 'Not submitted'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location Information */}
+                <div className="card p-4">
+                  <h4 className="font-semibold text-on-surface mb-4 flex items-center space-x-2">
+                    <MapPinned className="h-4 w-4" />
+                    <span>Location Details</span>
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-on-surface-variant block mb-1">Location</span>
+                        <span className="text-on-surface font-medium">{fullReport.location}</span>
+                      </div>
+                      {fullReport.emergency_alert_id && (
+                        <div>
+                          <span className="text-on-surface-variant block mb-1">Emergency ID</span>
+                          <span className="text-on-surface font-medium">{fullReport.emergency_alert_id}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Victim Information */}
+                <div className="card p-4">
+                  <h4 className="font-semibold text-on-surface mb-4 flex items-center space-x-2">
+                    <User className="h-4 w-4" />
+                    <span>Victim Information</span>
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant mb-1">Condition</span>
+                      <span className="text-on-surface capitalize">{getVictimConditionText(fullReport.victim_condition)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant mb-1">Gender</span>
+                      <span className="text-on-surface">{fullReport.victim_gender || 'Not specified'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant mb-1">Age</span>
+                      <span className="text-on-surface">{fullReport.victim_age || 'Not specified'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant mb-1">Anonymous</span>
+                      <span className="text-on-surface">{fullReport.is_anonymous ? 'Yes' : 'No'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Incident Details */}
+                <div className="card p-4">
+                  <h4 className="font-semibold text-on-surface mb-4 flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Incident Details</span>
+                  </h4>
+                  <div className="space-y-4">
+                    {fullReport.perpetrator_info && (
+                      <div>
+                        <span className="text-on-surface-variant block mb-2">Perpetrator Information</span>
+                        <div className="bg-surface-variant rounded-lg p-3">
+                          <p className="text-on-surface whitespace-pre-wrap">{fullReport.perpetrator_info}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {fullReport.actions_taken && (
+                      <div>
+                        <span className="text-on-surface-variant block mb-2">Actions Taken</span>
+                        <div className="bg-surface-variant rounded-lg p-3">
+                          <p className="text-on-surface whitespace-pre-wrap">{fullReport.actions_taken}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Services Involved */}
+                <div className="card p-4">
+                  <h4 className="font-semibold text-on-surface mb-4 flex items-center space-x-2">
+                    <Shield className="h-4 w-4" />
+                    <span>Services Involved</span>
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className={`flex items-center space-x-3 p-3 rounded-lg ${
+                      fullReport.police_involved ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-surface-variant'
+                    }`}>
+                      <Shield className={`h-5 w-5 ${fullReport.police_involved ? 'text-blue-500' : 'text-on-surface-variant'}`} />
+                      <div>
+                        <div className={`font-medium ${fullReport.police_involved ? 'text-blue-500' : 'text-on-surface-variant'}`}>
+                          Police
+                        </div>
+                        <div className="text-xs text-on-surface-variant">
+                          {fullReport.police_involved ? 'Involved' : 'Not Involved'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex items-center space-x-3 p-3 rounded-lg ${
+                      fullReport.medical_assistance ? 'bg-green-500/10 border border-green-500/20' : 'bg-surface-variant'
+                    }`}>
+                      <UserCheck className={`h-5 w-5 ${fullReport.medical_assistance ? 'text-green-500' : 'text-on-surface-variant'}`} />
+                      <div>
+                        <div className={`font-medium ${fullReport.medical_assistance ? 'text-green-500' : 'text-on-surface-variant'}`}>
+                          Medical
+                        </div>
+                        <div className="text-xs text-on-surface-variant">
+                          {fullReport.medical_assistance ? 'Assistance' : 'Not Required'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex items-center space-x-3 p-3 rounded-lg ${
+                      fullReport.ngo_involved ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-surface-variant'
+                    }`}>
+                      <Users className={`h-5 w-5 ${fullReport.ngo_involved ? 'text-purple-500' : 'text-on-surface-variant'}`} />
+                      <div>
+                        <div className={`font-medium ${fullReport.ngo_involved ? 'text-purple-500' : 'text-on-surface-variant'}`}>
+                          NGO
+                        </div>
+                        <div className="text-xs text-on-surface-variant">
+                          {fullReport.ngo_involved ? 'Involved' : 'Not Involved'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex items-center space-x-3 p-3 rounded-lg ${
+                      fullReport.evidence_collected ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-surface-variant'
+                    }`}>
+                      <Image className={`h-5 w-5 ${fullReport.evidence_collected ? 'text-orange-500' : 'text-on-surface-variant'}`} />
+                      <div>
+                        <div className={`font-medium ${fullReport.evidence_collected ? 'text-orange-500' : 'text-on-surface-variant'}`}>
+                          Evidence
+                        </div>
+                        <div className="text-xs text-on-surface-variant">
+                          {fullReport.evidence_collected ? 'Collected' : 'Not Collected'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Evidence Section */}
+                <div className="card p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-on-surface flex items-center space-x-2">
+                      <Image className="h-4 w-4" />
+                      <span>
+                        Evidence Files ({evidence.length})
+                        {loadingEvidence && <span className="text-sm text-on-surface-variant ml-2">Loading...</span>}
+                      </span>
+                    </h4>
+                    {evidence.length > 0 && (
+                      <button
+                        onClick={handleViewAllEvidence}
+                        className="text-primary hover:text-primary-dark text-sm font-medium flex items-center space-x-1"
+                      >
+                        <span>View All</span>
+                        <Play className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {loadingEvidence ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+                      <p className="text-on-surface-variant text-sm">Loading evidence files...</p>
+                    </div>
+                  ) : evidence.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {evidence.map((evidenceItem) => (
+                        <div 
+                          key={evidenceItem.id} 
+                          className="bg-surface-variant rounded-lg p-3 hover:bg-surface transition-colors cursor-pointer group"
+                          onClick={() => handleViewEvidence(evidenceItem)}
+                        >
+                          <div className="flex items-center space-x-3 mb-2">
+                            <div className={`p-2 rounded-lg ${getEvidenceIconColor(evidenceItem.file_type)}`}>
+                              {getEvidenceIcon(evidenceItem.file_type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-on-surface text-sm truncate">
+                                {evidenceItem.file.name || `Evidence_${evidenceItem.id}`}
+                              </div>
+                              <div className="text-xs text-on-surface-variant">
+                                {formatFileSize(evidenceItem.file.size)} • {formatTimeAgo(evidenceItem.uploaded_at)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-on-surface-variant capitalize">
+                              {getFileTypeDisplay(evidenceItem.file_type)}
+                            </span>
+                            <button className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                              View
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-surface-variant rounded-lg">
+                      <Image className="h-12 w-12 text-on-surface-variant mx-auto mb-3" />
+                      <p className="text-on-surface-variant">No evidence files attached to this report.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Additional Notes */}
+                {fullReport.additional_notes && (
+                  <div className="card p-4">
+                    <h4 className="font-semibold text-on-surface mb-3">Additional Notes</h4>
+                    <div className="bg-surface-variant rounded-lg p-4">
+                      <p className="text-on-surface whitespace-pre-wrap">{fullReport.additional_notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Follow-up Information */}
+                {fullReport.follow_up_required && (
+                  <div className="card p-4 border-l-4 border-yellow-500">
+                    <h4 className="font-semibold text-on-surface mb-3 flex items-center space-x-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-500" />
+                      <span>Follow-up Required</span>
+                    </h4>
+                    {fullReport.follow_up_details ? (
+                      <div className="bg-yellow-500/10 rounded-lg p-3">
+                        <p className="text-on-surface whitespace-pre-wrap">{fullReport.follow_up_details}</p>
+                      </div>
+                    ) : (
+                      <p className="text-on-surface-variant">No follow-up details provided.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Actions and Timeline */}
+              <div className="space-y-6">
+                {/* Report Actions */}
+                <div className="card p-4">
+                  <h4 className="font-semibold text-on-surface mb-3">Report Actions</h4>
+                  <div className="space-y-2">
+                    <button className="w-full bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors flex items-center justify-center space-x-2">
+                      <Download className="h-4 w-4" />
+                      <span>Download PDF</span>
+                    </button>
+                    <button className="w-full bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors flex items-center justify-center space-x-2">
+                      <Mail className="h-4 w-4" />
+                      <span>Share Report</span>
+                    </button>
+                    {fullReport.status === 'submitted' && (
+                      <button
+                        onClick={handleApprove}
+                        disabled={approving}
+                        className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span>{approving ? 'Approving...' : 'Approve Report'}</span>
+                      </button>
+                    )}
+                    {fullReport.status === 'draft' && (
+                      <button className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2">
+                        <FileText className="h-4 w-4" />
+                        <span>Submit Report</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Report Timeline */}
+                <div className="card p-4">
+                  <h4 className="font-semibold text-on-surface mb-3">Report Timeline</h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center py-2 border-b border-outline">
+                      <span className="text-on-surface-variant">Created</span>
+                      <span className="text-on-surface font-medium">{formatTimeAgo(fullReport.created_at)}</span>
+                    </div>
+                    {fullReport.submitted_at && (
+                      <div className="flex justify-between items-center py-2 border-b border-outline">
+                        <span className="text-on-surface-variant">Submitted</span>
+                        <span className="text-on-surface font-medium">{formatTimeAgo(fullReport.submitted_at)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-on-surface-variant">Last Updated</span>
+                      <span className="text-on-surface font-medium">{formatTimeAgo(fullReport.updated_at)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Information */}
+                <div className="card p-4">
+                  <h4 className="font-semibold text-on-surface mb-3">Quick Info</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Report ID</span>
+                      <span className="text-on-surface font-mono">#{fullReport.id}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Agent</span>
+                      <span className="text-on-surface">{fullReport.agent_name}</span>
+                    </div>
+                    {fullReport.emergency_alert_id && (
+                      <div className="flex justify-between">
+                        <span className="text-on-surface-variant">Emergency ID</span>
+                        <span className="text-on-surface font-mono">{fullReport.emergency_alert_id}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Evidence Files</span>
+                      <span className="text-on-surface">{evidence.length}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Evidence Modal */}
+      {showEvidenceModal && (
+        <EnhancedEvidenceModal 
+          evidence={selectedEvidence || evidence} 
+          onClose={() => {
+            setShowEvidenceModal(false)
+            setSelectedEvidence(null)
+          }} 
+        />
+      )}
+    </>
+  )
+}
+
+// NEW: Enhanced Evidence Modal Component
+const EnhancedEvidenceModal = ({ evidence, onClose }) => {
+  const [selectedEvidence, setSelectedEvidence] = useState(evidence[0] || null)
+
+  if (!evidence || evidence.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-surface rounded-xl max-w-md w-full">
+          <div className="p-6 border-b border-outline">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-on-surface">Evidence Files</h3>
+              <button
+                onClick={onClose}
+                className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          <div className="p-8 text-center">
+            <Image className="h-16 w-16 text-on-surface-variant mx-auto mb-4" />
+            <h4 className="text-lg font-semibold text-on-surface mb-2">No Evidence Available</h4>
+            <p className="text-on-surface-variant">No evidence files found for this report.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const getFileUrl = (evidenceItem) => {
+    // if (evidenceItem.file_url) return evidenceItem.file_url
+    // if (evidenceItem.file && typeof evidenceItem.file === 'string') {
+    //   if (evidenceItem.file.startsWith('http')) return evidenceItem.file
+    //   const baseUrl = process.env.REACT_APP_MEDIA_URL || 'http://localhost:8000'
+    //   const urla = `${baseUrl}${evidenceItem.file}`
+    //   console.log(urla)
+    //   return `${baseUrl}${evidenceItem.file}`
+
+    // }
+    // if (evidenceItem.file && evidenceItem.file.url) return evidenceItem.file.url
+    // return null
+    const baseUrl = process.env.REACT_APP_MEDIA_URL || 'http://localhost:8000'
+      const urla = `${baseUrl}${evidenceItem.file}`
+      console.log(urla)
+      return `${baseUrl}${evidenceItem.file}`
+  }
+
+  const renderEvidenceContent = (evidenceItem) => {
+    const fileUrl = getFileUrl(evidenceItem)
+    const fileType = evidenceItem.file_type?.toLowerCase()
+
+    if (!fileUrl) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-on-surface-variant">
+          <FileText className="h-16 w-16 mb-2" />
+          <p>File not available</p>
+        </div>
+      )
+    }
+
+    if (fileType.includes('image') || fileType === 'photo') {
+      return (
+        <img 
+          src={fileUrl} 
+          alt="Evidence" 
+          className="w-full h-full object-contain rounded-lg"
+          onError={(e) => {
+            e.target.style.display = 'none'
+            e.target.nextSibling.style.display = 'flex'
+          }}
+        />
+      )
+    } else if (fileType.includes('video')) {
+      return (
+        <video 
+          className="w-full h-full object-contain rounded-lg"
+          controls
+        >
+          <source src={fileUrl} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      )
+    } else if (fileType.includes('audio')) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-4">
+          <div className="text-4xl mb-4">🎵</div>
+          <audio 
+            className="w-full"
+            controls
+          >
+            <source src={fileUrl} type="audio/mpeg" />
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      )
+    } else {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-on-surface-variant">
+          <FileText className="h-16 w-16 mb-2" />
+          <p>Preview not available</p>
+          <a 
+            href={fileUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="mt-2 px-3 py-1 bg-primary text-white rounded text-sm"
+          >
+            Download File
+          </a>
+        </div>
+      )
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-surface rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-outline">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-on-surface">
+              Evidence Files ({evidence.length})
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+            >
+              <XCircle className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              {selectedEvidence ? (
+                <div className="bg-surface-variant rounded-lg overflow-hidden">
+                  <div className="h-96 bg-black flex items-center justify-center">
+                    {renderEvidenceContent(selectedEvidence)}
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded ${getEvidenceIconColor(selectedEvidence.file_type)}`}>
+                          {getEvidenceIcon(selectedEvidence.file_type)}
+                        </div>
+                        <div>
+                          <div className="font-medium text-on-surface">
+                            {selectedEvidence.file?.name || `Evidence_${selectedEvidence.id}`}
+                          </div>
+                          <div className="text-sm text-on-surface-variant">
+                            {formatFileSize(selectedEvidence.file?.size)} • {formatTimeAgo(selectedEvidence.uploaded_at)}
+                          </div>
+                        </div>
+                      </div>
+                      <a 
+                        href={getFileUrl(selectedEvidence)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center space-x-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        <span>Download</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-96 bg-surface-variant rounded-lg flex items-center justify-center">
+                  <div className="text-center text-on-surface-variant">
+                    <Image className="h-12 w-12 mx-auto mb-2" />
+                    <p>Select an evidence file to preview</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              <h4 className="font-semibold text-on-surface">All Evidence Files</h4>
+              {evidence.map(item => (
+                <div
+                  key={item.id}
+                  className={`p-3 rounded-lg cursor-pointer transition-all ${
+                    selectedEvidence?.id === item.id 
+                      ? 'bg-primary text-white' 
+                      : 'bg-surface-variant hover:bg-surface'
+                  }`}
+                  onClick={() => setSelectedEvidence(item)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-2 rounded ${
+                      selectedEvidence?.id === item.id 
+                        ? 'bg-white/20' 
+                        : getEvidenceIconColor(item.file_type)
+                    }`}>
+                      {getEvidenceIcon(item.file_type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-medium text-sm ${
+                        selectedEvidence?.id === item.id ? 'text-white' : 'text-on-surface'
+                      }`}>
+                        {item.file?.name || `Evidence_${item.id}`}
+                      </div>
+                      <div className={`text-xs ${
+                        selectedEvidence?.id === item.id ? 'text-white/80' : 'text-on-surface-variant'
+                      }`}>
+                        {formatFileSize(item.file?.size)} • {formatTimeAgo(item.uploaded_at)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+// Add these helper functions near the other utility functions
+const getEvidenceIcon = (fileType) => {
+  const type = fileType?.toLowerCase()
+  if (type.includes('image') || type === 'photo') return <Image className="h-4 w-4" />
+  if (type.includes('video')) return <Video className="h-4 w-4" />
+  if (type.includes('audio')) return <Mic className="h-4 w-4" />
+  if (type.includes('pdf')) return <FileText className="h-4 w-4" />
+  return <FileText className="h-4 w-4" />
+}
+
+const getEvidenceIconColor = (fileType) => {
+  const type = fileType?.toLowerCase()
+  if (type.includes('image') || type === 'photo') return 'bg-blue-500/20 text-blue-500'
+  if (type.includes('video')) return 'bg-purple-500/20 text-purple-500'
+  if (type.includes('audio')) return 'bg-green-500/20 text-green-500'
+  if (type.includes('pdf')) return 'bg-red-500/20 text-red-500'
+  return 'bg-gray-500/20 text-gray-500'
+}
+
+const getFileTypeDisplay = (fileType) => {
+  const type = fileType?.toLowerCase()
+  if (type.includes('image') || type === 'photo') return 'Image'
+  if (type.includes('video')) return 'Video'
+  if (type.includes('audio')) return 'Audio'
+  if (type.includes('pdf')) return 'PDF'
+  return 'File'
+}
+
+
+// EmergencyMap Component
 const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdates, emergencyResponses }) => {
   const getResponderColor = (type) => {
     switch (type) {
@@ -580,7 +1574,6 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
     }
   }
 
-  // Safely parse coordinates
   const parseCoordinate = (coord) => {
     if (coord === null || coord === undefined) return null
     const parsed = parseFloat(coord)
@@ -604,20 +1597,14 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
 
   const emergencyPosition = [latitude, longitude]
 
-  // Get responder locations from emergency responses with proper coordinates
   const getResponderLocations = () => {
     if (!emergencyResponses?.responses) return [];
     
     return emergencyResponses.responses.map(response => {
-      // For assigned responders, we need to get their current location
-      // Since the API response doesn't include responder coordinates directly,
-      // we'll create mock locations around the emergency for demonstration
       const baseLat = latitude;
       const baseLng = longitude;
-      
-      // Generate random coordinates within 5km radius for demonstration
-      const radius = 5; // km
-      const randomOffset = () => (Math.random() - 0.5) * (radius / 111); // approx 1 degree = 111km
+      const radius = 5;
+      const randomOffset = () => (Math.random() - 0.5) * (radius / 111);
       
       const responderLat = baseLat + randomOffset();
       const responderLng = baseLng + randomOffset();
@@ -637,7 +1624,6 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
     });
   }
 
-  // Combine available responders with assigned responders for map display
   const allResponders = [
     ...(responders || []).map(responder => ({
       ...responder,
@@ -648,7 +1634,6 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
 
   return (
     <div className="space-y-4">
-      {/* Map Container */}
       <div className="card p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-on-surface flex items-center space-x-2">
@@ -685,7 +1670,6 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             
-            {/* Emergency Location Marker */}
             <Marker 
               position={emergencyPosition}
               icon={createCustomIcon('#ef4444', '🚨')}
@@ -702,7 +1686,6 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
               </Tooltip>
             </Marker>
 
-            {/* Responder Markers */}
             {allResponders.map((responder) => {
               const responderLat = parseCoordinate(responder.latitude)
               const responderLng = parseCoordinate(responder.longitude)
@@ -750,7 +1733,6 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
               )
             })}
 
-            {/* Location History Markers */}
             {locationUpdates && locationUpdates.slice(0, 5).map((location, index) => {
               const locationLat = parseCoordinate(location.latitude)
               const locationLng = parseCoordinate(location.longitude)
@@ -776,7 +1758,6 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
               )
             })}
 
-            {/* Routes to Responders */}
             {allResponders.map((responder) => {
               const responderLat = parseCoordinate(responder.latitude)
               const responderLng = parseCoordinate(responder.longitude)
@@ -799,7 +1780,6 @@ const EmergencyMap = ({ emergency, responders, onResponderSelect, locationUpdate
           </MapContainer>
         </div>
 
-        {/* Location Details */}
         <div className="mt-4 p-3 bg-surface-variant rounded-lg">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
@@ -848,8 +1828,53 @@ const Emergencies = () => {
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [selectedResponder, setSelectedResponder] = useState(null)
   const [emergencyResponses, setEmergencyResponses] = useState(null)
+  
+  // NEW STATES FOR REPORTS FEATURE
+  const [incidentReports, setIncidentReports] = useState([])
+  const [showReportsModal, setShowReportsModal] = useState(false)
+  const [showReportDetailModal, setShowReportDetailModal] = useState(false)
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [loadingReports, setLoadingReports] = useState(false)
 
-  // Fixed fetchAllMedia function
+  // NEW: Fetch detailed report
+  const fetchReportDetails = useCallback(async (reportId) => {
+    try {
+      const response = await api.get(`/aegis/emergency-response/incident-reports/${reportId}/`)
+      console.log(response.data.data)
+      if (response.data.success) {
+        return response.data.data
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching report details:', error)
+      return null
+    }
+  }, [])
+
+  // Fetch incident reports for an emergency
+  const fetchIncidentReports = useCallback(async (alertId) => {
+    console.log('Fetching incident reports for alert ID:', alertId)
+    try {
+      setLoadingReports(true)
+      const response = await api.get(`/aegis/emergency-response/incident-reports-list/${alertId}/`, {
+        params: { emergency: alertId }
+      })
+      
+      if (response.data.success) {
+        setIncidentReports(response.data.data)
+        console.log(response.data.data)
+      } else {
+        setIncidentReports([])
+      }
+    } catch (error) {
+      console.error('Error fetching incident reports:', error)
+      setIncidentReports([])
+    } finally {
+      setLoadingReports(false)
+    }
+  }, [])
+
+  // Fetch all media
   const fetchAllMedia = useCallback(async (alertId = null, mediaType = null) => {
     try {
       const params = new URLSearchParams()
@@ -864,7 +1889,6 @@ const Emergencies = () => {
       const response = await api.get(`/aegis/emergency/get-media/?${params.toString()}`)
       
       if (response.data.success) {
-        // Ensure we have an array and each media item has required fields
         const mediaData = response.data.data || [];
         return mediaData.map(media => ({
           id: media.id || Math.random().toString(36).substr(2, 9),
@@ -880,7 +1904,6 @@ const Emergencies = () => {
       return []
     } catch (error) {
       console.error('Error fetching media:', error)
-      // Return mock data for demonstration if API fails
       return [
         {
           id: '1',
@@ -897,20 +1920,12 @@ const Emergencies = () => {
           file_size: 5120000,
           captured_at: new Date(Date.now() - 300000).toISOString(),
           duration: 60
-        },
-        {
-          id: '3',
-          media_type: 'audio',
-          file_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-          file_size: 1024000,
-          captured_at: new Date(Date.now() - 600000).toISOString(),
-          duration: 120
         }
       ]
     }
   }, [])
 
-  // Fetch emergency responders (from the Django API endpoint)
+  // Fetch emergency responders
   const fetchEmergencyResponses = useCallback(async (alertId) => {
     try {
       const response = await api.get(`/aegis/emergency/${alertId}/notified-responder/`)
@@ -1020,6 +2035,49 @@ const Emergencies = () => {
     ])
   }, [fetchEmergencyDetails, fetchEmergencyUpdates, fetchAvailableResponders, fetchEmergencyMapData, fetchEmergencyContacts, fetchEmergencyResponses, fetchAllMedia])
 
+  // NEW: Handle view reports
+  const handleViewReports = async (emergency) => {
+    setSelectedEmergency(emergency)
+    await fetchIncidentReports(emergency.alert_id)
+    setShowReportsModal(true)
+  }
+
+  // NEW: Handle view report details
+  const handleViewReportDetails = async (report) => {
+    try {
+      setLoadingReports(true)
+      const detailedReport = await fetchReportDetails(report.id)
+      if (detailedReport) {
+        setSelectedReport(detailedReport)
+        setShowReportDetailModal(true)
+        setShowReportsModal(false)
+      } else {
+        // Fallback to basic report data if detailed fetch fails
+        setSelectedReport(report)
+        setShowReportDetailModal(true)
+        setShowReportsModal(false)
+      }
+    } catch (error) {
+      console.error('Error loading report details:', error)
+      // Fallback to basic report data
+      setSelectedReport(report)
+      setShowReportDetailModal(true)
+      setShowReportsModal(false)
+    } finally {
+      setLoadingReports(false)
+    }
+  }
+
+  // NEW: Handle report approval
+  const handleReportApproved = (updatedReport) => {
+    setIncidentReports(prev => 
+      prev.map(report => 
+        report.id === updatedReport.id ? updatedReport : report
+      )
+    )
+    setSelectedReport(updatedReport)
+  }
+
   // Auto-refresh effect
   useEffect(() => {
     fetchEmergencies()
@@ -1032,7 +2090,7 @@ const Emergencies = () => {
     const interval = setInterval(async () => {
       console.log('Auto-refreshing emergency data...')
       await loadEmergencyData(selectedEmergency)
-    }, 30000) // 30 seconds
+    }, 30000)
 
     return () => clearInterval(interval)
   }, [selectedEmergency, autoRefresh, loadEmergencyData])
@@ -1056,7 +2114,6 @@ const Emergencies = () => {
       })
       
       if (response.data.success) {
-        // Refresh all data
         await loadEmergencyData(selectedEmergency)
         setShowAssignmentModal(false)
         setSelectedResponder(null)
@@ -1083,7 +2140,6 @@ const Emergencies = () => {
       })
       
       if (response.data.success) {
-        // Update local state
         setEmergencies(prev => prev.map(emergency => 
           emergency.alert_id === emergencyId 
             ? { ...emergency, status: newStatus }
@@ -1092,7 +2148,6 @@ const Emergencies = () => {
         
         if (selectedEmergency && selectedEmergency.alert_id === emergencyId) {
           setSelectedEmergency(prev => ({ ...prev, status: newStatus }))
-          // Refresh details
           fetchEmergencyDetails(emergencyId)
           fetchEmergencyUpdates(emergencyId)
         }
@@ -1104,7 +2159,7 @@ const Emergencies = () => {
 
   const handleViewDetails = async (emergency) => {
     setSelectedEmergency(emergency)
-    setAutoRefresh(true) // Enable auto-refresh when viewing details
+    setAutoRefresh(true)
   }
 
   const handleViewMedia = async (alertId = null) => {
@@ -1401,6 +2456,16 @@ const Emergencies = () => {
                       >
                         <Eye className="h-4 w-4" />
                       </button>
+                      
+                      {/* NEW: Reports Button */}
+                      <button
+                        onClick={() => handleViewReports(emergency)}
+                        className="p-2 text-on-surface-variant hover:text-blue-500 hover:bg-surface rounded-lg transition-colors"
+                        title="View Incident Reports"
+                      >
+                        <FileBarChart className="h-4 w-4" />
+                      </button>
+                      
                       {emergency.status === 'active' && (
                         <button
                           onClick={() => {
@@ -1658,6 +2723,25 @@ const Emergencies = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* NEW: Incident Reports List Modal */}
+      {showReportsModal && (
+        <IncidentReportsList 
+          reports={incidentReports}
+          onReportSelect={handleViewReportDetails}
+          onClose={() => setShowReportsModal(false)}
+          loading={loadingReports}
+        />
+      )}
+
+      {/* NEW: Detailed Report Modal */}
+      {showReportDetailModal && selectedReport && (
+        <DetailedReportModal 
+          report={selectedReport}
+          onClose={() => setShowReportDetailModal(false)}
+          onApprove={handleReportApproved}
+        />
       )}
 
       {/* Assignment Modal */}
