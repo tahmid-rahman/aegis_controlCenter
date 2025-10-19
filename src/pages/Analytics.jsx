@@ -19,6 +19,7 @@ import {
   TrendingDown
 } from 'lucide-react'
 import { useEmergencies } from '../contexts/EmergencyContext'
+import api from '../services/api'
 
 const Analytics = () => {
   const { emergencies } = useEmergencies()
@@ -26,78 +27,113 @@ const Analytics = () => {
   const [activeTab, setActiveTab] = useState('overview')
   const [isLoading, setIsLoading] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(false)
+  const [analyticsData, setAnalyticsData] = useState(null)
+  const [error, setError] = useState(null)
 
-  // Mock analytics data
-  const analyticsData = {
-    overview: {
-      totalIncidents: 1247,
-      activeNow: 8,
-      avgResponseTime: '4.2 min',
-      resolutionRate: '94%',
-      trend: '+12%',
-      peakHours: ['18:00', '22:00']
-    },
-    trends: {
-      daily: [45, 52, 48, 61, 55, 58, 52, 49, 53, 60, 55, 57, 52, 50],
-      weekly: [312, 298, 345, 328, 361, 342, 355],
-      monthly: [1247, 1128, 1356, 1289, 1423, 1387],
-      hourly: [23, 18, 15, 12, 8, 6, 9, 15, 28, 35, 42, 48, 52, 55, 58, 61, 65, 68, 72, 75, 68, 55, 42, 32]
-    },
-    geographic: {
-      hotspots: [
-        { area: 'Mirpur', incidents: 245, trend: 'up', density: 'high' },
-        { area: 'Gulshan', incidents: 189, trend: 'up', density: 'high' },
-        { area: 'Dhanmondi', incidents: 167, trend: 'stable', density: 'medium' },
-        { area: 'Uttara', incidents: 142, trend: 'down', density: 'medium' },
-        { area: 'Banani', incidents: 128, trend: 'up', density: 'medium' },
-        { area: 'Mohakhali', incidents: 98, trend: 'stable', density: 'low' }
-      ],
-      coverage: '87%',
-      newAreas: 3
-    },
-    types: {
-      harassment: { count: 342, trend: 'up', responseTime: '3.8 min' },
-      robbery: { count: 228, trend: 'down', responseTime: '5.2 min' },
-      stalking: { count: 195, trend: 'stable', responseTime: '4.1 min' },
-      assault: { count: 168, trend: 'up', responseTime: '4.5 min' },
-      domestic: { count: 156, trend: 'up', responseTime: '3.9 min' },
-      cyber: { count: 78, trend: 'up', responseTime: '6.1 min' },
-      other: { count: 80, trend: 'stable', responseTime: '4.8 min' }
-    },
-    performance: {
-      responders: [
-        { name: 'Police Units', efficiency: '92%', avgTime: '3.8 min', cases: 645 },
-        { name: 'NGO Teams', efficiency: '88%', avgTime: '4.5 min', cases: 342 },
-        { name: 'Medical Units', efficiency: '95%', avgTime: '4.1 min', cases: 156 },
-        { name: 'Volunteers', efficiency: '82%', avgTime: '5.2 min', cases: 104 }
-      ],
-      overallEfficiency: '89%',
-      improvement: '+5%'
-    },
-    predictions: {
-      nextWeek: 285,
-      riskAreas: ['Mirpur', 'Gulshan', 'Dhanmondi'],
-      seasonalTrend: 'increasing',
-      confidence: '85%'
+  // Fetch analytics data
+  const fetchAnalyticsData = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await api.get('aegis/dashboard-analytics/')
+      if (response.data.success) {
+        setAnalyticsData(response.data.data)
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch analytics data')
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load analytics data')
+      console.error('Error fetching analytics data:', err)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  // Auto-refresh simulation
+  useEffect(() => {
+    fetchAnalyticsData()
+  }, [timeRange])
+
+  // Auto-refresh
   useEffect(() => {
     let interval
     if (autoRefresh) {
       interval = setInterval(() => {
-        setIsLoading(true)
-        setTimeout(() => setIsLoading(false), 1000)
+        fetchAnalyticsData()
       }, 30000) // Refresh every 30 seconds
     }
     return () => clearInterval(interval)
   }, [autoRefresh])
 
   const refreshData = () => {
-    setIsLoading(true)
-    setTimeout(() => setIsLoading(false), 1500)
+    fetchAnalyticsData()
   }
+
+  // Transform API data to match component structure
+  const transformAnalyticsData = (data) => {
+    if (!data) return null
+
+    return {
+      overview: {
+        totalIncidents: data.overview?.totalIncidents || 0,
+        activeNow: data.overview?.activeNow || 0,
+        avgResponseTime: data.overview?.avgResponseTime || 'N/A',
+        resolutionRate: data.overview?.resolutionRate || '0%',
+        trend: data.overview?.trend || '0%',
+        peakHours: data.overview?.peakHours || [],
+        responseTimeTrend: data.overview?.responseTimeTrend || '0min',
+        resolutionTrend: data.overview?.resolutionTrend || '0%'
+      },
+      trends: {
+        daily: data.trends?.daily || [],
+        weekly: data.trends?.weekly || [],
+        monthly: data.trends?.monthly || [],
+        hourly: data.trends?.hourly || [],
+        types: data.trends?.incidentTypes || {}
+      },
+      geographic: {
+        hotspots: data.geographic?.hotspots?.map(hotspot => ({
+          area: hotspot.area,
+          incidents: hotspot.incidents,
+          trend: hotspot.trend,
+          density: hotspot.density,
+          highSeverityCount: hotspot.high_severity_count,
+          activeCount: hotspot.active_count
+        })) || [],
+        coverage: data.geographic?.coverage || '0%',
+        newAreas: data.geographic?.newAreas || 0,
+        totalLocations: data.geographic?.totalLocations || 0
+      },
+      performance: {
+        responders: data.performance?.responders?.map(responder => ({
+          name: responder.name,
+          type: responder.type,
+          efficiency: responder.efficiency,
+          avgTime: responder.avgTime,
+          cases: responder.cases,
+          rating: responder.rating,
+          totalLifetimeCases: responder.totalLifetimeCases
+        })) || [],
+        overallEfficiency: data.performance?.overallEfficiency || '0%',
+        totalResponders: data.performance?.totalResponders || 0,
+        avgResponderRating: data.performance?.avgResponderRating || 0,
+        improvement: data.performance?.improvement || '0%'
+      },
+      userMetrics: {
+        activeUsers: data.userMetrics?.activeUsers || 0,
+        safetyComplianceRate: data.userMetrics?.safetyComplianceRate || '0%',
+        totalSafetyChecks: data.userMetrics?.totalSafetyChecks || 0
+      },
+      predictions: {
+        nextWeek: data.predictions?.nextWeek || 0,
+        riskAreas: data.predictions?.riskAreas || [],
+        seasonalTrend: data.predictions?.seasonalTrend || 'stable',
+        confidence: data.predictions?.confidence || '0%'
+      },
+      metadata: data.metadata || {}
+    }
+  }
+
+  const transformedData = transformAnalyticsData(analyticsData)
 
   const getTrendIcon = (trend) => {
     return trend === 'up' ? 
@@ -116,6 +152,122 @@ const Analytics = () => {
     }
   }
 
+  // Map component for geographic visualization
+  const MapVisualization = ({ hotspots }) => {
+    const getAreaColor = (density) => {
+      switch (density) {
+        case 'high': return '#DC2626'
+        case 'medium': return '#EA580C'
+        case 'low': return '#16A34A'
+        default: return '#6B7280'
+      }
+    }
+
+    const getAreaSize = (incidents) => {
+      if (incidents > 30) return 'w-16 h-16'
+      if (incidents > 20) return 'w-12 h-12'
+      if (incidents > 10) return 'w-10 h-10'
+      if (incidents > 5) return 'w-8 h-8'
+      return 'w-6 h-6'
+    }
+
+    return (
+      <div className="relative bg-surface-variant rounded-lg h-64 overflow-hidden">
+        {/* Simplified Dhaka map representation */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="relative w-64 h-48 bg-blue-50 rounded-lg border-2 border-blue-200">
+            {/* Mirpur Area */}
+            {hotspots.find(h => h.area.includes('Mirpur')) && (
+              <div 
+                className={`absolute left-4 top-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${getAreaSize(hotspots.find(h => h.area.includes('Mirpur')).incidents)}`}
+                style={{ 
+                  backgroundColor: getAreaColor(hotspots.find(h => h.area.includes('Mirpur')).density)
+                }}
+                title={`Mirpur: ${hotspots.find(h => h.area.includes('Mirpur')).incidents} incidents`}
+              >
+                <span className="text-white text-xs font-bold">M</span>
+              </div>
+            )}
+            
+            {/* Gulshan Area */}
+            {hotspots.find(h => h.area.includes('Gulshan')) && (
+              <div 
+                className={`absolute right-12 top-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${getAreaSize(hotspots.find(h => h.area.includes('Gulshan')).incidents)}`}
+                style={{ 
+                  backgroundColor: getAreaColor(hotspots.find(h => h.area.includes('Gulshan')).density)
+                }}
+                title={`Gulshan: ${hotspots.find(h => h.area.includes('Gulshan')).incidents} incidents`}
+              >
+                <span className="text-white text-xs font-bold">G</span>
+              </div>
+            )}
+            
+            {/* Dhanmondi Area */}
+            {hotspots.find(h => h.area.includes('Dhanmondi')) && (
+              <div 
+                className={`absolute left-16 top-20 rounded-full border-2 border-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${getAreaSize(hotspots.find(h => h.area.includes('Dhanmondi')).incidents)}`}
+                style={{ 
+                  backgroundColor: getAreaColor(hotspots.find(h => h.area.includes('Dhanmondi')).density)
+                }}
+                title={`Dhanmondi: ${hotspots.find(h => h.area.includes('Dhanmondi')).incidents} incidents`}
+              >
+                <span className="text-white text-xs font-bold">D</span>
+              </div>
+            )}
+            
+            {/* Uttara Area */}
+            {hotspots.find(h => h.area.includes('Uttara')) && (
+              <div 
+                className={`absolute right-8 bottom-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${getAreaSize(hotspots.find(h => h.area.includes('Uttara')).incidents)}`}
+                style={{ 
+                  backgroundColor: getAreaColor(hotspots.find(h => h.area.includes('Uttara')).density)
+                }}
+                title={`Uttara: ${hotspots.find(h => h.area.includes('Uttara')).incidents} incidents`}
+              >
+                <span className="text-white text-xs font-bold">U</span>
+              </div>
+            )}
+            
+            {/* Generic hotspots for other areas */}
+            {hotspots.filter(h => !['Mirpur', 'Gulshan', 'Dhanmondi', 'Uttara'].some(area => h.area.includes(area))).map((hotspot, index) => (
+              <div 
+                key={index}
+                className={`absolute rounded-full border-2 border-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${getAreaSize(hotspot.incidents)}`}
+                style={{ 
+                  backgroundColor: getAreaColor(hotspot.density),
+                  left: `${20 + (index * 15)}%`,
+                  top: `${30 + (index * 10)}%`
+                }}
+                title={`${hotspot.area}: ${hotspot.incidents} incidents`}
+              >
+                <span className="text-white text-xs font-bold">H</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Legend */}
+        <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+          <div className="text-xs font-semibold text-gray-700 mb-2">Incident Density</div>
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-xs text-gray-600">High</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+              <span className="text-xs text-gray-600">Medium</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-xs text-gray-600">Low</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderOverview = () => (
     <div className="space-y-6">
       {/* Key Metrics */}
@@ -124,13 +276,15 @@ const Analytics = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-on-surface-variant">Total Incidents</p>
-              <p className="text-3xl font-bold text-on-surface mt-2">{analyticsData.overview.totalIncidents}</p>
+              <p className="text-3xl font-bold text-on-surface mt-2">{transformedData?.overview.totalIncidents || 0}</p>
             </div>
             <AlertTriangle className="h-8 w-8 text-primary" />
           </div>
           <div className="mt-4 flex items-center text-sm">
-            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-            <span className="text-green-500">{analyticsData.overview.trend} this month</span>
+            {getTrendIcon(transformedData?.overview.trend.includes('+') ? 'up' : 'stable')}
+            <span className={transformedData?.overview.trend.includes('+') ? 'text-green-500' : 'text-yellow-500'}>
+              {transformedData?.overview.trend} this month
+            </span>
           </div>
         </div>
 
@@ -138,7 +292,7 @@ const Analytics = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-on-surface-variant">Active Now</p>
-              <p className="text-3xl font-bold text-red-500 mt-2">{analyticsData.overview.activeNow}</p>
+              <p className="text-3xl font-bold text-red-500 mt-2">{transformedData?.overview.activeNow || 0}</p>
             </div>
             <Activity className="h-8 w-8 text-red-500" />
           </div>
@@ -151,12 +305,12 @@ const Analytics = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-on-surface-variant">Avg Response Time</p>
-              <p className="text-3xl font-bold text-on-surface mt-2">{analyticsData.overview.avgResponseTime}</p>
+              <p className="text-3xl font-bold text-on-surface mt-2">{transformedData?.overview.avgResponseTime || 'N/A'}</p>
             </div>
             <Clock className="h-8 w-8 text-blue-500" />
           </div>
           <div className="mt-4 text-sm text-on-surface-variant">
-            -0.3min from last month
+            {transformedData?.overview.responseTimeTrend || '0min'} from last month
           </div>
         </div>
 
@@ -164,12 +318,12 @@ const Analytics = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-on-surface-variant">Resolution Rate</p>
-              <p className="text-3xl font-bold text-green-500 mt-2">{analyticsData.overview.resolutionRate}</p>
+              <p className="text-3xl font-bold text-green-500 mt-2">{transformedData?.overview.resolutionRate || '0%'}</p>
             </div>
             <Target className="h-8 w-8 text-green-500" />
           </div>
           <div className="mt-4 text-sm text-on-surface-variant">
-            +2% improvement
+            {transformedData?.overview.resolutionTrend || '0%'} improvement
           </div>
         </div>
       </div>
@@ -180,14 +334,14 @@ const Analytics = () => {
         <div className="card p-6">
           <h3 className="text-lg font-semibold text-on-surface mb-4">Daily Incident Trends</h3>
           <div className="space-y-3">
-            {analyticsData.trends.daily.slice(-7).map((count, index) => (
+            {(transformedData?.trends.daily.slice(-7) || []).map((count, index) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-on-surface-variant text-sm">Day {index + 1}</span>
                 <div className="flex items-center space-x-3">
                   <div className="w-32 bg-surface-variant rounded-full h-3">
                     <div 
                       className="bg-primary rounded-full h-3"
-                      style={{ width: `${(count / 70) * 100}%` }}
+                      style={{ width: `${(count / Math.max(...transformedData?.trends.daily.slice(-7) || [1])) * 100}%` }}
                     ></div>
                   </div>
                   <span className="text-on-surface text-sm font-medium w-8 text-right">{count}</span>
@@ -201,7 +355,7 @@ const Analytics = () => {
         <div className="card p-6">
           <h3 className="text-lg font-semibold text-on-surface mb-4">Incident Type Distribution</h3>
           <div className="space-y-4">
-            {Object.entries(analyticsData.types).map(([type, data]) => (
+            {Object.entries(transformedData?.trends.types || {}).map(([type, data]) => (
               <div key={type} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`w-3 h-3 rounded-full ${
@@ -216,10 +370,7 @@ const Analytics = () => {
                 </div>
                 <div className="flex items-center space-x-4">
                   <span className="text-on-surface font-medium">{data.count}</span>
-                  <div className="flex items-center space-x-1">
-                    {getTrendIcon(data.trend)}
-                    <span className="text-on-surface-variant text-sm">{data.responseTime}</span>
-                  </div>
+                  <span className="text-on-surface-variant text-sm">{data.percentage}%</span>
                 </div>
               </div>
             ))}
@@ -231,14 +382,14 @@ const Analytics = () => {
       <div className="card p-6">
         <h3 className="text-lg font-semibold text-on-surface mb-4">Peak Activity Hours</h3>
         <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
-          {analyticsData.trends.hourly.map((count, hour) => (
+          {(transformedData?.trends.hourly || []).map((count, hour) => (
             <div key={hour} className="text-center">
               <div className="text-xs text-on-surface-variant mb-1">{hour}:00</div>
               <div 
                 className="bg-primary rounded-t-lg transition-all hover:opacity-80 cursor-pointer"
                 style={{ 
-                  height: `${(count / 80) * 60}px`,
-                  backgroundColor: hour >= 18 && hour <= 22 ? '#DC2626' : '#6750A4'
+                  height: `${(count / Math.max(...transformedData?.trends.hourly || [1])) * 60}px`,
+                  backgroundColor: transformedData?.overview.peakHours?.includes(`${hour}:00`) ? '#DC2626' : '#6750A4'
                 }}
                 title={`${count} incidents at ${hour}:00`}
               ></div>
@@ -246,7 +397,7 @@ const Analytics = () => {
           ))}
         </div>
         <div className="mt-4 text-sm text-on-surface-variant text-center">
-          Peak hours: {analyticsData.overview.peakHours.join(' - ')}
+          Peak hours: {(transformedData?.overview.peakHours || []).join(' - ')}
         </div>
       </div>
     </div>
@@ -258,13 +409,15 @@ const Analytics = () => {
       <div className="card p-6">
         <h3 className="text-lg font-semibold text-on-surface mb-4">Geographic Hotspots</h3>
         <div className="space-y-4">
-          {analyticsData.geographic.hotspots.map((area, index) => (
+          {(transformedData?.geographic.hotspots || []).map((area, index) => (
             <div key={index} className="flex items-center justify-between p-4 bg-surface-variant rounded-lg">
               <div className="flex items-center space-x-4">
                 <MapPin className="h-5 w-5 text-on-surface-variant" />
                 <div>
                   <div className="font-medium text-on-surface">{area.area}</div>
-                  <div className="text-sm text-on-surface-variant">{area.incidents} incidents</div>
+                  <div className="text-sm text-on-surface-variant">
+                    {area.incidents} incidents • {area.activeCount || 0} active
+                  </div>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
@@ -280,29 +433,27 @@ const Analytics = () => {
           ))}
         </div>
         
-        <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
+        <div className="mt-6 grid grid-cols-3 gap-4 text-sm">
           <div className="text-center p-3 bg-surface-variant rounded-lg">
             <div className="text-on-surface-variant">Coverage Area</div>
-            <div className="text-2xl font-bold text-green-500 mt-1">{analyticsData.geographic.coverage}</div>
+            <div className="text-2xl font-bold text-green-500 mt-1">{transformedData?.geographic.coverage || '0%'}</div>
+          </div>
+          <div className="text-center p-3 bg-surface-variant rounded-lg">
+            <div className="text-on-surface-variant">Total Locations</div>
+            <div className="text-2xl font-bold text-blue-500 mt-1">{transformedData?.geographic.totalLocations || 0}</div>
           </div>
           <div className="text-center p-3 bg-surface-variant rounded-lg">
             <div className="text-on-surface-variant">New Areas</div>
-            <div className="text-2xl font-bold text-blue-500 mt-1">+{analyticsData.geographic.newAreas}</div>
+            <div className="text-2xl font-bold text-orange-500 mt-1">+{transformedData?.geographic.newAreas || 0}</div>
           </div>
         </div>
       </div>
 
-      {/* Map Visualization Placeholder */}
-      <div className="card p-6">
+      {/* Map Visualization */}
+      {/* <div className="card p-6">
         <h3 className="text-lg font-semibold text-on-surface mb-4">Incident Density Map</h3>
-        <div className="bg-surface-variant rounded-lg h-64 flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="h-12 w-12 text-on-surface-variant mx-auto mb-3" />
-            <p className="text-on-surface-variant">Interactive map visualization</p>
-            <p className="text-sm text-on-surface-variant mt-1">Showing incident density across Dhaka</p>
-          </div>
-        </div>
-      </div>
+        <MapVisualization hotspots={transformedData?.geographic.hotspots || []} />
+      </div> */}
     </div>
   )
 
@@ -312,23 +463,25 @@ const Analytics = () => {
       <div className="card p-6">
         <h3 className="text-lg font-semibold text-on-surface mb-4">Responder Team Performance</h3>
         <div className="space-y-4">
-          {analyticsData.performance.responders.map((team, index) => (
+          {(transformedData?.performance.responders || []).map((team, index) => (
             <div key={index} className="flex items-center justify-between p-4 bg-surface-variant rounded-lg">
               <div className="flex items-center space-x-4">
                 <Shield className="h-5 w-5 text-primary" />
                 <div>
                   <div className="font-medium text-on-surface">{team.name}</div>
-                  <div className="text-sm text-on-surface-variant">{team.cases} cases handled</div>
+                  <div className="text-sm text-on-surface-variant">
+                    {team.cases || 0} cases handled • Rating: {team.rating || 0}/5
+                  </div>
                 </div>
               </div>
               <div className="flex items-center space-x-6">
                 <div className="text-center">
                   <div className="text-sm text-on-surface-variant">Efficiency</div>
-                  <div className="font-semibold text-green-500">{team.efficiency}</div>
+                  <div className="font-semibold text-green-500">{team.efficiency || '0%'}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-sm text-on-surface-variant">Avg Time</div>
-                  <div className="font-semibold text-on-surface">{team.avgTime}</div>
+                  <div className="font-semibold text-on-surface">{team.avgTime || 'N/A'}</div>
                 </div>
               </div>
             </div>
@@ -339,52 +492,56 @@ const Analytics = () => {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium text-on-surface">Overall System Efficiency</div>
-              <div className="text-sm text-on-surface-variant">Combined performance across all teams</div>
+              <div className="text-sm text-on-surface-variant">
+                {transformedData?.performance.totalResponders || 0} responders • Avg rating: {transformedData?.performance.avgResponderRating || 0}/5
+              </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-green-500">{analyticsData.performance.overallEfficiency}</div>
-              <div className="text-sm text-green-500">+{analyticsData.performance.improvement} improvement</div>
+              <div className="text-2xl font-bold text-green-500">{transformedData?.performance.overallEfficiency || '0%'}</div>
+              <div className="text-sm text-green-500">+{transformedData?.performance.improvement || '0%'} improvement</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Response Time Analysis */}
+      {/* User Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-6">
-          <h3 className="text-lg font-semibold text-on-surface mb-4">Response Time Trends</h3>
+          <h3 className="text-lg font-semibold text-on-surface mb-4">User Safety Metrics</h3>
           <div className="space-y-4">
-            {[
-              { period: 'Last 24h', time: '4.1 min', trend: 'down' },
-              { period: 'Last 7d', time: '4.3 min', trend: 'down' },
-              { period: 'Last 30d', time: '4.2 min', trend: 'stable' },
-              { period: 'Last 90d', time: '4.5 min', trend: 'down' }
-            ].map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <span className="text-on-surface">{item.period}</span>
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium text-on-surface">{item.time}</span>
-                  {getTrendIcon(item.trend)}
-                </div>
-              </div>
-            ))}
+            <div className="flex items-center justify-between">
+              <span className="text-on-surface">Active Users</span>
+              <span className="font-medium text-blue-500">{transformedData?.userMetrics.activeUsers || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-on-surface">Safety Compliance</span>
+              <span className="font-medium text-green-500">{transformedData?.userMetrics.safetyComplianceRate || '0%'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-on-surface">Safety Checks</span>
+              <span className="font-medium text-purple-500">{transformedData?.userMetrics.totalSafetyChecks || 0}</span>
+            </div>
           </div>
         </div>
 
         <div className="card p-6">
-          <h3 className="text-lg font-semibold text-on-surface mb-4">Efficiency Metrics</h3>
+          <h3 className="text-lg font-semibold text-on-surface mb-4">Response Time Analysis</h3>
           <div className="space-y-4">
             {[
-              { metric: 'First Response', value: '98%', target: '95%' },
-              { metric: 'Case Completion', value: '94%', target: '90%' },
-              { metric: 'Follow-up Rate', value: '89%', target: '85%' },
-              { metric: 'User Satisfaction', value: '92%', target: '88%' }
+              { period: 'Current', time: transformedData?.overview.avgResponseTime || 'N/A', trend: 'current' },
+              { period: 'Target', time: '15 min', trend: 'target' },
+              { period: 'Improvement', time: transformedData?.overview.responseTimeTrend || '0min', trend: 'improvement' }
             ].map((item, index) => (
               <div key={index} className="flex items-center justify-between">
-                <span className="text-on-surface">{item.metric}</span>
-                <div className="text-right">
-                  <div className="font-medium text-green-500">{item.value}</div>
-                  <div className="text-xs text-on-surface-variant">Target: {item.target}</div>
+                <span className="text-on-surface">{item.period}</span>
+                <div className="flex items-center space-x-2">
+                  <span className={`font-medium ${
+                    item.trend === 'current' ? 'text-orange-500' :
+                    item.trend === 'target' ? 'text-green-500' :
+                    item.trend === 'improvement' ? 'text-blue-500' : 'text-on-surface'
+                  }`}>
+                    {item.time}
+                  </span>
                 </div>
               </div>
             ))}
@@ -402,31 +559,33 @@ const Analytics = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="text-center p-4 bg-surface-variant rounded-lg">
             <div className="text-on-surface-variant">Expected Incidents Next Week</div>
-            <div className="text-3xl font-bold text-orange-500 mt-2">{analyticsData.predictions.nextWeek}</div>
+            <div className="text-3xl font-bold text-orange-500 mt-2">{transformedData?.predictions.nextWeek || 0}</div>
             <div className="text-sm text-on-surface-variant mt-1">Based on current trends</div>
           </div>
           <div className="text-center p-4 bg-surface-variant rounded-lg">
             <div className="text-on-surface-variant">Seasonal Trend</div>
-            <div className="text-3xl font-bold text-red-500 mt-2 capitalize">{analyticsData.predictions.seasonalTrend}</div>
+            <div className="text-3xl font-bold text-red-500 mt-2 capitalize">{transformedData?.predictions.seasonalTrend || 'stable'}</div>
             <div className="text-sm text-on-surface-variant mt-1">Pattern analysis</div>
           </div>
           <div className="text-center p-4 bg-surface-variant rounded-lg">
             <div className="text-on-surface-variant">Prediction Confidence</div>
-            <div className="text-3xl font-bold text-green-500 mt-2">{analyticsData.predictions.confidence}</div>
+            <div className="text-3xl font-bold text-green-500 mt-2">{transformedData?.predictions.confidence || '0%'}</div>
             <div className="text-sm text-on-surface-variant mt-1">Model accuracy</div>
           </div>
         </div>
 
-        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-          <h4 className="font-medium text-yellow-500 mb-2">High-Risk Areas Next Week</h4>
-          <div className="flex flex-wrap gap-2">
-            {analyticsData.predictions.riskAreas.map((area, index) => (
-              <span key={index} className="px-3 py-1 bg-yellow-500/20 text-yellow-500 rounded-full text-sm">
-                {area}
-              </span>
-            ))}
+        {(transformedData?.predictions.riskAreas || []).length > 0 && (
+          <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <h4 className="font-medium text-yellow-500 mb-2">High-Risk Areas Next Week</h4>
+            <div className="flex flex-wrap gap-2">
+              {transformedData.predictions.riskAreas.map((area, index) => (
+                <span key={index} className="px-3 py-1 bg-yellow-500/20 text-yellow-500 rounded-full text-sm">
+                  {area}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Trend Projections */}
@@ -434,10 +593,10 @@ const Analytics = () => {
         <h3 className="text-lg font-semibold text-on-surface mb-4">Trend Projections</h3>
         <div className="space-y-4">
           {[
-            { category: 'Harassment Cases', current: 45, projected: 52, trend: 'up' },
-            { category: 'Response Time', current: '4.2min', projected: '3.9min', trend: 'down' },
-            { category: 'Coverage Area', current: '87%', projected: '91%', trend: 'up' },
-            { category: 'Resolution Rate', current: '94%', projected: '96%', trend: 'up' }
+            { category: 'Total Incidents', current: transformedData?.overview.totalIncidents || 0, projected: transformedData?.predictions.nextWeek || 0, trend: 'up' },
+            { category: 'Response Time', current: transformedData?.overview.avgResponseTime || 'N/A', projected: '15 min', trend: 'down' },
+            { category: 'Resolution Rate', current: transformedData?.overview.resolutionRate || '0%', projected: '25%', trend: 'up' },
+            { category: 'Coverage Area', current: transformedData?.geographic.coverage || '0%', projected: '30%', trend: 'up' }
           ].map((item, index) => (
             <div key={index} className="flex items-center justify-between p-3 bg-surface-variant rounded-lg">
               <span className="text-on-surface">{item.category}</span>
@@ -466,6 +625,35 @@ const Analytics = () => {
     { id: 'performance', name: 'Performance', icon: Target },
     { id: 'predictive', name: 'Predictive', icon: TrendingUp }
   ]
+
+  if (isLoading && !analyticsData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading analytics...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !analyticsData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-on-surface mb-2">Error loading analytics</h2>
+          <p className="text-on-surface-variant mb-4">{error}</p>
+          <button 
+            onClick={fetchAnalyticsData}
+            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/80 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -537,7 +725,7 @@ const Analytics = () => {
 
           <div className="flex items-center space-x-2 text-sm text-on-surface-variant">
             <Calendar className="h-4 w-4" />
-            <span>Data up to: {new Date().toLocaleDateString()}</span>
+            <span>Data up to: {new Date(transformedData?.metadata?.endDate || Date.now()).toLocaleDateString()}</span>
           </div>
         </div>
       </div>
@@ -555,10 +743,12 @@ const Analytics = () => {
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-on-surface-variant">Data Quality: Excellent</span>
+            <span className="text-on-surface-variant">
+              Data Quality: {transformedData?.metadata?.dataPoints ? 'Good' : 'Unknown'}
+            </span>
           </div>
           <div className="text-on-surface-variant">
-            Last updated: {new Date().toLocaleTimeString()}
+            Last updated: {new Date(transformedData?.metadata?.lastUpdated || Date.now()).toLocaleTimeString()}
           </div>
         </div>
       </div>

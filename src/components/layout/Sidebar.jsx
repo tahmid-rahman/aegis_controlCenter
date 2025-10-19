@@ -1,10 +1,11 @@
 // src/components/layout/Sidebar.jsx
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Profiler } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   AlertTriangle, 
   Users, 
+  User,
   BarChart3, 
   FileText, 
   Settings,
@@ -85,13 +86,13 @@ const Sidebar = () => {
       current: location.pathname === '/responders',
       badge: null
     },
-    {
-      name: 'Messages',
-      href: '/messages',
-      icon: MessageCircle,
-      current: location.pathname === '/messages',
-      badge: null
-    },
+    // {
+    //   name: 'Messages',
+    //   href: '/messages',
+    //   icon: MessageCircle,
+    //   current: location.pathname === '/messages',
+    //   badge: null
+    // },
     {
       name: 'Analytics',
       href: '/analytics',
@@ -120,11 +121,18 @@ const Sidebar = () => {
       current: location.pathname === '/resources',
       badge: null
     },
+    // {
+    //   name: 'Settings',
+    //   href: '/settings',
+    //   icon: Settings,
+    //   current: location.pathname === '/settings',
+    //   badge: null
+    // },
     {
-      name: 'Settings',
-      href: '/settings',
-      icon: Settings,
-      current: location.pathname === '/settings',
+      name: 'Profile',
+      href: '/profile',
+      icon: User,
+      current: location.pathname === '/profile',
       badge: null
     }
   ]

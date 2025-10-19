@@ -2268,8 +2268,8 @@ const Emergencies = () => {
             {autoRefresh && <span className="text-green-500 ml-2">• Auto-refresh ON (30s)</span>}
           </p>
         </div>
-        <div className="flex space-x-3 mt-4 lg:mt-0">
-          <button 
+        <div className="flex space-x-3 items-center mt-4 lg:mt-0">
+          {/* <button 
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
               autoRefresh 
@@ -2279,13 +2279,23 @@ const Emergencies = () => {
           >
             <RefreshCw className="h-4 w-4" />
             <span>Auto: {autoRefresh ? 'ON' : 'OFF'}</span>
-          </button>
+          </button> */}
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            <span className="ml-2 text-sm text-on-surface-variant">Auto-refresh</span>
+          </label>
           <button 
             onClick={handleManualRefresh}
             className="btn-primary flex items-center space-x-2"
             disabled={loading}
           >
-            <Download className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" />
             <span>{loading ? 'Refreshing...' : 'Refresh Now'}</span>
           </button>
         </div>
@@ -2581,10 +2591,10 @@ const Emergencies = () => {
                         <Phone className="h-4 w-4" />
                         <span>Call User</span>
                       </button>
-                      <button className="bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors flex items-center justify-center space-x-2">
+                      {/* <button className="bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors flex items-center justify-center space-x-2">
                         <Navigation className="h-4 w-4" />
                         <span>Navigate</span>
-                      </button>
+                      </button> */}
                       <button 
                         onClick={() => handleSendMessage(emergencyDetails?.user_info?.phone)}
                         className="bg-surface-variant text-on-surface py-2 rounded-lg hover:bg-surface transition-colors flex items-center justify-center space-x-2"
