@@ -1358,8 +1358,8 @@ const EnhancedEvidenceModal = ({ evidence, onClose }) => {
     // if (evidenceItem.file && evidenceItem.file.url) return evidenceItem.file.url
     // return null
     const baseUrl = process.env.REACT_APP_MEDIA_URL || 'http://localhost:8000'
-      const urla = `${baseUrl}${evidenceItem.file}`
-      console.log(urla)
+      // const urla = `${baseUrl}${evidenceItem.file}`
+      // console.log(`${baseUrl}${evidenceItem.file}`)
       return `${baseUrl}${evidenceItem.file}`
   }
 
@@ -2165,6 +2165,7 @@ const Emergencies = () => {
   const handleViewMedia = async (alertId = null) => {
     const media = await fetchAllMedia(alertId)
     setAllMedia(media)
+    console.log(media)
     setShowMediaModal(true)
   }
 

@@ -158,14 +158,14 @@ const Header = () => {
       <div className="flex items-center justify-between">
         {/* Left Section - Search */}
         <div className="flex-1 max-w-lg">
-          <div className="relative">
+          {/* <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant h-4 w-4" />
             <input
               type="text"
               placeholder="Search emergencies, responders..."
               className="input-field w-full pl-10 pr-4"
             />
-          </div>
+          </div> */}
         </div>
 
         {/* Right Section */}
@@ -386,12 +386,12 @@ const Header = () => {
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-lg border border-outline z-50">
                 <div className="p-2">
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-variant rounded-md transition-colors"
+                  {/* <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-variant rounded-md transition-colors"
                   onClick={() => navigate("/settings")}
                   >
                     <Settings className="h-4 w-4" />
                     <span>Settings</span>
-                  </button>
+                  </button> */}
                   <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-variant rounded-md transition-colors"
                   onClick={() => navigate("/profile")}
                   >
